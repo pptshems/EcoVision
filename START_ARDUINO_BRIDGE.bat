@@ -1,9 +1,12 @@
 @echo off
-title EcoVision - Remote Arduino Bridge
-cd /d "%~dp0"
+title EcoVision - Arduino Bridge
 echo.
-echo EcoVision Arduino Bridge
- echo Set ECOVISION_SERVER_URL and ECOVISION_BRIDGE_TOKEN before running.
+echo ========================================
+echo      EcoVision Arduino Bridge
+echo ========================================
+echo.
+echo This program owns the Arduino USB/COM port.
+echo Keep this window running while using the website.
 echo.
 python arduino_bridge.py
 pause

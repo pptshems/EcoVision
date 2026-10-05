@@ -85,3 +85,24 @@ START_ECOVISION_PC.bat remains available for the original local PC camera + Ardu
 
 IMPORTANT
 The PC must stay powered, connected to the Internet, Arduino connected by USB, and START_ARDUINO_BRIDGE.bat running if you want phone classifications to control that Arduino. Never expose COM7 directly to the Internet. The bridge uses an authentication token.
+
+UPDATED PC + ARDUINO CONNECTION
+The recommended public setup now has only ONE program owning the Arduino COM port: arduino_bridge.py.
+Do NOT run app.py at the same time as the bridge.
+
+1. In Render, set ECOVISION_BRIDGE_TOKEN to exactly:
+   ECOVISION-DEMO-BRIDGE-2026
+   (Or replace this value in bridge_config.json with your own Render token.)
+2. Keep server_url as https://ecovision-0z28.onrender.com, or replace it with your final domain.
+3. Connect the Arduino USB cable to the PC.
+4. Upload EcoVision_Final/EcoVision_Final.ino.
+5. Double-click START_ECOVISION_PC.bat.
+6. The Arduino Bridge automatically detects a suitable COM port and reconnects if the cable is temporarily disconnected.
+7. The browser opens the public EcoVision website. The PC Arduino controls now show the bridge/Arduino status.
+8. The website sends classification commands through Render to the bridge, and the bridge sends them to the Arduino.
+
+IMPORTANT:
+- Do not run START_ECOVISION_PC.bat and python app.py together.
+- Do not open two Arduino Bridge windows.
+- If the website says Arduino offline, keep the bridge window open and check that the Arduino appears in Windows Device Manager / Arduino IDE under Tools > Port.
+- If you use your own Render bridge token, the value in bridge_config.json must exactly match Render's ECOVISION_BRIDGE_TOKEN.
