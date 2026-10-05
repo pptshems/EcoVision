@@ -59,39 +59,121 @@ function setDot(dot, state) {
 }
 
 async function startCamera() {
-    try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: isMobileDevice ? {
-                // Use the rear phone camera and request a natural portrait-friendly frame.
-                width: { ideal: 1080 },
-                height: { ideal: 1440 },
-                aspectRatio: { ideal: 0.75 },
-                facingMode: { ideal: "environment" },
-                frameRate: { ideal: 30, max: 30 }
-            } : {
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
-
-        video.srcObject = cameraStream;
-        // Mobile browsers sometimes attach the stream before starting playback.
-        try { await video.play(); } catch (e) { console.debug("Camera autoplay deferred", e); }
-        cameraMessage.classList.add("hidden");
-        cameraBadge.textContent = "READY";
-        cameraStatus.textContent = "Ready";
-        setDot(cameraDot, "online");
-    } catch (error) {
-        console.error(error);
-        cameraMessage.classList.remove("hidden");
-        cameraMessage.innerHTML = `<div class="camera-icon">⚠</div><div>Camera access denied or unavailable</div>`;
-        cameraBadge.textContent = "ERROR";
-        cameraStatus.textContent = "Error";
-        setDot(cameraDot, "offline");
-        footerMessage.textContent = "Camera unavailable • Please allow camera permission";
+    // Android Chrome is strict about camera permissions and supported constraints.
+    // Try the rear camera first, then progressively fall back to simpler constraints.
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError("Camera is not available", "Open EcoVision in Chrome over HTTPS.");
+        return;
     }
+
+    if (isMobileDevice && location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        showCameraError("Secure connection required", "Open the EcoVision HTTPS link in Chrome to use the camera.");
+        return;
+    }
+
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+
+    const mobileConstraints = [
+        {
+            video: {
+                facingMode: { exact: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30, max: 30 }
+            }, audio: false
+        },
+        {
+            video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30 }
+            }, audio: false
+        },
+        { video: true, audio: false }
+    ];
+
+    const desktopConstraints = [{
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: false
+    }];
+
+    const attempts = isMobileDevice ? mobileConstraints : desktopConstraints;
+    let lastError = null;
+
+    for (const constraints of attempts) {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+            break;
+        } catch (error) {
+            lastError = error;
+            console.warn("Camera attempt failed:", error.name, error.message);
+        }
+    }
+
+    if (!cameraStream) {
+        console.error(lastError);
+        const name = lastError?.name || "UnknownError";
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+            showCameraError("Camera permission denied", "Tap the camera permission in Chrome and choose Allow, then reload.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+            showCameraError("No camera found", "Check that your phone camera is available and try again.");
+        } else if (name === "NotReadableError" || name === "TrackStartError") {
+            showCameraError("Camera is busy", "Close other apps using the camera and try again.");
+        } else {
+            showCameraError("Camera unavailable", "Use the HTTPS EcoVision link in Chrome and allow camera access.");
+        }
+        return;
+    }
+
+    video.srcObject = cameraStream;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+
+    // Let the browser choose the native stream orientation; CSS keeps the preview
+    // unmirrored and fills the phone camera frame naturally.
+    try { await video.play(); } catch (e) {
+        console.debug("Camera playback deferred until user interaction", e);
+        cameraMessage.classList.remove("hidden");
+        cameraMessage.innerHTML = `<div class="camera-icon">▶</div><div>Tap here to start the camera</div>`;
+    }
+
+    cameraMessage.classList.add("hidden");
+    cameraBadge.textContent = isMobileDevice ? "READY" : "READY";
+    cameraStatus.textContent = "Ready";
+    setDot(cameraDot, "online");
+    footerMessage.textContent = isMobileDevice
+        ? "Ready • Point the camera at an item and press SCAN NOW"
+        : "Ready • Place an item in front of the sensor";
 }
+
+function showCameraError(title, help) {
+    cameraMessage.classList.remove("hidden");
+    cameraMessage.innerHTML = `<div class="camera-icon">⚠</div><div><strong>${title}</strong></div><div class="camera-help-inline">${help}</div>`;
+    cameraBadge.textContent = "CAMERA OFF";
+    cameraStatus.textContent = "Unavailable";
+    setDot(cameraDot, "offline");
+    footerMessage.textContent = help;
+}
+
+// Some Android browsers defer video playback until a touch. Tapping the preview
+// retries playback without requiring a second page reload.
+cameraMessage.addEventListener("click", async () => {
+    if (cameraStream) {
+        try {
+            await video.play();
+            cameraMessage.classList.add("hidden");
+        } catch (e) {
+            console.debug("Camera playback still unavailable", e);
+        }
+    } else {
+        await startCamera();
+    }
+});
 
 async function checkStatus() {
     try {
