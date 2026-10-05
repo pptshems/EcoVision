@@ -544,59 +544,184 @@ body[data-mode="mobile"] .camera-help::after {
     }
 }
 
-/* MOBILE CAMERA — phone-camera style preview */
+
+/* MOBILE CAMERA + TOUCH UI
+   Keeps the same EcoVision visual language as PC, but behaves more like a
+   normal phone camera: rear camera, unmirrored preview, stable framing,
+   larger touch targets and no page scrolling. */
 @media (max-width: 600px) {
-    body[data-mode="mobile"] .camera-card {
-        padding: 7px;
+    body[data-mode="mobile"] .app {
+        background: #07110d;
+    }
+
+    body[data-mode="mobile"] .topbar {
+        height: 54px;
+        flex-basis: 54px;
+        padding: 3px 10px;
+    }
+
+    body[data-mode="mobile"] .brand-logo-frame {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
         border-radius: 12px;
     }
 
+    body[data-mode="mobile"] .brand-logo { border-radius: 10px; }
+    body[data-mode="mobile"] .brand-name { font-size: 18px; }
+
+    body[data-mode="mobile"] .main {
+        height: auto;
+        margin: 4px 0;
+        padding: 0 7px;
+        gap: 6px;
+        grid-template-rows: minmax(0, 44%) minmax(0, 56%);
+    }
+
+    body[data-mode="mobile"] .camera-card {
+        padding: 7px;
+        border-radius: 13px;
+        min-height: 0;
+    }
+
     body[data-mode="mobile"] .camera-card .card-title {
-        height: 18px;
+        height: 19px;
+        flex-basis: 19px;
         margin-bottom: 5px;
-        font-size: 8px;
+        font-size: 9px;
     }
 
     body[data-mode="mobile"] .camera-container {
+        min-height: 0;
         width: 100%;
         height: 100%;
-        min-height: 0;
-        border-radius: 10px;
+        border-radius: 11px;
         background: #000;
-        border: 1px solid #1c3025;
-        /* Keep a natural phone-camera portrait frame. */
-        aspect-ratio: 3 / 4;
+        border: 1px solid #20382b;
+        overflow: hidden;
     }
 
     body[data-mode="mobile"] #video {
         width: 100%;
         height: 100%;
-        display: block;
         object-fit: cover;
         object-position: center center;
-        /* Rear phone camera is NOT mirrored. */
+        display: block;
+        /* Rear camera behaves like the native camera app — no mirror effect. */
         transform: none;
         -webkit-transform: none;
     }
 
     body[data-mode="mobile"] .camera-corner {
-        width: 20px;
-        height: 20px;
+        width: 21px;
+        height: 21px;
     }
 
     body[data-mode="mobile"] .top-left { top: 10px; left: 10px; }
     body[data-mode="mobile"] .top-right { top: 10px; right: 10px; }
     body[data-mode="mobile"] .bottom-left { bottom: 10px; left: 10px; }
     body[data-mode="mobile"] .bottom-right { bottom: 10px; right: 10px; }
+
+    body[data-mode="mobile"] .side {
+        grid-template-rows: minmax(0, 1.25fr) minmax(0, .9fr) 46px 38px;
+        gap: 6px;
+    }
+
+    body[data-mode="mobile"] .result-card {
+        padding: 8px 12px;
+        border-radius: 12px;
+    }
+
+    body[data-mode="mobile"] .section-label {
+        font-size: 8px;
+        letter-spacing: .8px;
+    }
+
+    body[data-mode="mobile"] .result-icon {
+        font-size: clamp(27px, 8vw, 38px);
+        margin: 3px 0;
+    }
+
+    body[data-mode="mobile"] .result-label {
+        font-size: clamp(17px, 5vw, 23px);
+        line-height: 1.05;
+    }
+
+    body[data-mode="mobile"] .confidence {
+        margin-top: 4px;
+        font-size: 9px;
+    }
+
+    body[data-mode="mobile"] .progress-track {
+        height: 6px;
+        margin: 5px 2px 3px;
+    }
+
+    body[data-mode="mobile"] .original-label {
+        font-size: 8px;
+        min-height: 10px;
+    }
+
+    body[data-mode="mobile"] .status-card {
+        padding: 7px 12px;
+        border-radius: 12px;
+    }
+
+    body[data-mode="mobile"] .status-card .section-label { font-size: 8px; }
+    body[data-mode="mobile"] .status-row { padding: 3px 0; font-size: 10px; }
+    body[data-mode="mobile"] .status-row strong { font-size: 9px; }
+    body[data-mode="mobile"] .status-name { gap: 6px; }
+    body[data-mode="mobile"] .dot { width: 7px; height: 7px; }
+
+    body[data-mode="mobile"] .scan-button,
+    body[data-mode="mobile"] .reset-button {
+        min-height: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 11px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body[data-mode="mobile"] .scan-button {
+        font-size: 12px;
+        padding: 6px;
+    }
+
+    body[data-mode="mobile"] .scan-button span {
+        font-size: 16px;
+        margin-right: 4px;
+    }
+
+    body[data-mode="mobile"] .reset-button {
+        font-size: 10px;
+        padding: 6px;
+    }
+
+    body[data-mode="mobile"] footer {
+        height: 20px;
+        flex-basis: 20px;
+        padding: 0 8px;
+        font-size: 6.5px;
+    }
 }
 
-/* Short portrait phones */
+/* Very short phones: preserve the complete interface without scrolling. */
 @media (max-width: 600px) and (max-height: 700px) {
-    body[data-mode="mobile"] .camera-card {
-        padding: 5px;
+    body[data-mode="mobile"] .main {
+        grid-template-rows: minmax(0, 40%) minmax(0, 60%);
     }
-    body[data-mode="mobile"] .camera-card .card-title {
-        height: 15px;
-        margin-bottom: 3px;
+
+    body[data-mode="mobile"] .topbar {
+        height: 50px;
+        flex-basis: 50px;
     }
+
+    body[data-mode="mobile"] .brand-logo-frame {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+    }
+
+    body[data-mode="mobile"] .brand-name { font-size: 16px; }
 }
