@@ -781,8 +781,8 @@ body[data-mode="mobile"] .camera-help::after {
     body[data-mode="mobile"] .side {
         min-height: 0;
         height: 100%;
-        grid-template-rows: minmax(0, 1fr) 48px 38px;
-        gap: 6px;
+        grid-template-rows: minmax(0, 1fr) 72px 58px;
+        gap: 7px;
     }
 
     body[data-mode="mobile"] .mobile-system-status {
@@ -810,11 +810,21 @@ body[data-mode="mobile"] .camera-help::after {
     }
 
     body[data-mode="mobile"] .scan-button {
-        font-size: 13px;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: .2px;
+        padding: 10px 8px;
+    }
+
+    body[data-mode="mobile"] .scan-button span {
+        font-size: 20px;
+        margin-right: 5px;
     }
 
     body[data-mode="mobile"] .reset-button {
-        font-size: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 10px 8px;
     }
 
     body[data-mode="mobile"] footer {
@@ -845,6 +855,6 @@ body[data-mode="mobile"] .camera-help::after {
     }
 
     body[data-mode="mobile"] .side {
-        grid-template-rows: minmax(0, 1fr) 44px 34px;
+        grid-template-rows: minmax(0, 1fr) 62px 50px;
     }
 }
