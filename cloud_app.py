@@ -114,6 +114,8 @@ def remote_ack():
     return jsonify({'success': True})
 
 
+# Load the model when imported by Gunicorn as well as when run directly.
+load_model()
+
 if __name__ == '__main__':
-    load_model()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '10000')))
