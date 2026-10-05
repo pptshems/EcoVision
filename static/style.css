@@ -858,3 +858,81 @@ body[data-mode="mobile"] .camera-help::after {
         grid-template-rows: minmax(0, 1fr) 62px 50px;
     }
 }
+
+
+/* FINAL MOBILE SPACE FILL — keep controls directly connected to the result panel */
+@media (max-width: 600px) {
+    body[data-mode="mobile"] .side {
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) 96px 68px;
+        gap: 3px;
+        height: 100%;
+        min-height: 0;
+    }
+
+    body[data-mode="mobile"] .result-card {
+        margin: 0;
+        min-height: 0;
+        height: 100%;
+        padding: 6px 12px;
+    }
+
+    body[data-mode="mobile"] .scan-button {
+        margin: 0;
+        min-height: 0;
+        height: 100%;
+        border-radius: 14px;
+        padding: 8px 10px;
+        font-size: 17px;
+    }
+
+    body[data-mode="mobile"] .reset-button {
+        margin: 0;
+        min-height: 0;
+        height: 100%;
+        border-radius: 12px;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 600px) and (max-height: 700px) {
+    body[data-mode="mobile"] .side {
+        grid-template-rows: minmax(0, 1fr) 82px 58px;
+        gap: 3px;
+    }
+}
+
+/* FINAL MOBILE RESULT -> SCAN CONNECTION */
+@media (max-width: 600px) {
+    body[data-mode="mobile"] .side {
+        gap: 0 !important;
+        grid-template-rows: minmax(0, 1fr) 96px 68px !important;
+        row-gap: 0 !important;
+    }
+
+    body[data-mode="mobile"] .result-card {
+        margin: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-bottom: 0 !important;
+    }
+
+    body[data-mode="mobile"] .scan-button {
+        margin: 0 !important;
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+    }
+
+    body[data-mode="mobile"] .reset-button {
+        margin-top: 0 !important;
+    }
+}
+
+@media (max-width: 600px) and (max-height: 700px) {
+    body[data-mode="mobile"] .side {
+        gap: 0 !important;
+        row-gap: 0 !important;
+        grid-template-rows: minmax(0, 1fr) 82px 58px !important;
+    }
+}
