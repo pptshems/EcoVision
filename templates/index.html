@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoVision</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body data-mode="auto">
+<div class="app">
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-logo-frame">
+                <img class="brand-logo" src="{{ url_for('static', filename='ecovision-logo.png') }}" alt="EcoVision logo">
+            </div>
+            <div class="brand-text">
+                <div class="brand-name"><span>Eco</span>Vision</div>
+                <div class="brand-caption">Smart waste classification using AI + Arduino</div>
+            </div>
+        </div>
+
+        <div class="connection" id="connectionArea">
+            <span id="connectionDot" class="dot offline"></span>
+            <span id="connectionText">Checking Arduino...</span>
+        </div>
+    </header>
+
+    <div class="controlbar" id="arduinoControls">
+        <span class="control-label">ARDUINO</span>
+        <label class="port-label" for="portSelect">COM PORT</label>
+        <select id="portSelect" class="port-select">
+            <option value="COM7">COM7</option>
+        </select>
+        <button id="refreshPortsButton" class="refresh-button" title="Refresh COM ports">↻</button>
+        <button id="arduinoButton" class="secondary-button">Connect Arduino</button>
+        <span id="portText" class="port-text">9600 baud</span>
+    </div>
+
+    <main class="main">
+
+        <!-- CAMERA -->
+        <section class="camera-card card">
+            <div class="card-title">
+                <span>LIVE CAMERA</span>
+                <span id="cameraBadge" class="badge">STARTING</span>
+            </div>
+
+            <div class="camera-container">
+
+                <video id="video" autoplay playsinline muted></video>
+
+                <canvas id="canvas" width="224" height="224"></canvas>
+
+                <div id="cameraMessage" class="camera-message">
+                    <div class="camera-icon">📷</div>
+                    <div>Starting camera...</div>
+                </div>
+
+                <!-- Scanning overlay -->
+                <div id="scanOverlay" class="scan-overlay hidden">
+                    <div class="scan-corners"></div>
+                    <div class="scan-line"></div>
+
+                    <div class="scan-center">
+                        <div class="scanner-ring"></div>
+                        <div class="scan-text">SCANNING</div>
+                        <div id="scanCountdown">Analyzing object...</div>
+                    </div>
+                </div>
+
+                <div class="camera-corner top-left"></div>
+                <div class="camera-corner top-right"></div>
+                <div class="camera-corner bottom-left"></div>
+                <div class="camera-corner bottom-right"></div>
+            </div>
+
+            <div class="camera-help">
+                PC: Place the waste item in front of the HC-SR04 sensor. EcoVision will automatically scan it. On mobile, use SCAN NOW.
+            </div>
+        </section>
+
+        <!-- RIGHT SIDE -->
+        <aside class="side">
+
+            <section class="card result-card">
+                <div class="section-label">CLASSIFICATION RESULT</div>
+
+                <div id="resultIcon" class="result-icon">♻</div>
+
+                <div id="resultLabel" class="result-label">
+                    WAITING
+                </div>
+
+                <div id="resultConfidence" class="confidence">
+                    Confidence: --
+                </div>
+
+                <div class="progress-track">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+
+                <div id="originalLabel" class="original-label">
+                    No scan performed yet
+                </div>
+            </section>
+
+            <section class="card status-card">
+                <div class="section-label">SYSTEM STATUS</div>
+
+                <div class="status-row">
+                    <span class="status-name">
+                        <span id="cameraDot" class="dot"></span>
+                        Camera
+                    </span>
+                    <strong id="cameraStatus">Starting...</strong>
+                </div>
+
+                <div class="status-row">
+                    <span class="status-name">
+                        <span id="arduinoDot" class="dot"></span>
+                        Arduino
+                    </span>
+                    <strong id="arduinoStatus">Connecting...</strong>
+                </div>
+
+                <div class="status-row">
+                    <span class="status-name">
+                        <span id="modelDot" class="dot"></span>
+                        AI Model
+                    </span>
+                    <strong id="modelStatus">Checking...</strong>
+                </div>
+
+                <div class="status-row">
+                    <span class="status-name">
+                        <span id="objectDot" class="dot"></span>
+                        Object Sensor
+                    </span>
+                    <strong id="objectStatus">Waiting for object</strong>
+                </div>
+            </section>
+
+            <button id="scanButton" class="scan-button">
+                <span>⌕</span>
+                SCAN NOW
+            </button>
+
+            <button id="resetButton" class="reset-button">
+                Reset Result
+            </button>
+
+        </aside>
+
+    </main>
+
+    <footer>
+        <span id="footerMessage">
+            Ready • Place an item in front of the camera
+        </span>
+        <span>CBSE Class 12 AI Project • EcoVision</span>
+    </footer>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
