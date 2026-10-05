@@ -62,8 +62,10 @@ async function startCamera() {
     try {
         cameraStream = await navigator.mediaDevices.getUserMedia({
             video: isMobileDevice ? {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
+                // Portrait-friendly constraints for a natural phone-camera preview.
+                width: { ideal: 1080 },
+                height: { ideal: 1440 },
+                aspectRatio: { ideal: 0.75 },
                 facingMode: { ideal: "environment" }
             } : {
                 width: { ideal: 1280 },
@@ -73,6 +75,8 @@ async function startCamera() {
         });
 
         video.srcObject = cameraStream;
+        // Explicitly start playback on mobile browsers after the stream is attached.
+        try { await video.play(); } catch (e) { console.debug("Camera autoplay deferred", e); }
         cameraMessage.classList.add("hidden");
         cameraBadge.textContent = "READY";
         cameraStatus.textContent = "Ready";
