@@ -8,15 +8,19 @@ import serial
 from serial.tools import list_ports
 from PIL import Image
 
+# Python 3.14 compatible LiteRT backend.
 try:
-    import tflite_runtime.interpreter as tflite
+    from ai_edge_litert import interpreter as tflite
 except ImportError:
     try:
-        from tensorflow import lite as tflite
+        import tflite_runtime.interpreter as tflite
     except ImportError:
-        raise SystemExit(
-            "TFLite is not installed. Install tflite-runtime or TensorFlow."
-        )
+        try:
+            from tensorflow import lite as tflite
+        except ImportError as exc:
+            raise SystemExit(
+                "LiteRT is not installed. Install with: pip install ai-edge-litert"
+            ) from exc
 
 app = Flask(__name__)
 

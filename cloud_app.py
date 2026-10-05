@@ -5,10 +5,20 @@ from flask import Flask, render_template, request, jsonify
 import numpy as np
 from PIL import Image
 
+# Python 3.14 compatible LiteRT backend.
+# ai-edge-litert provides the TFLite-compatible Interpreter API.
 try:
-    import tflite_runtime.interpreter as tflite
+    from ai_edge_litert import interpreter as tflite
 except ImportError:
-    from tensorflow import lite as tflite
+    try:
+        import tflite_runtime.interpreter as tflite
+    except ImportError:
+        try:
+            from tensorflow import lite as tflite
+        except ImportError as exc:
+            raise SystemExit(
+                "LiteRT is not installed. Install with: pip install ai-edge-litert"
+            ) from exc
 
 app = Flask(__name__)
 

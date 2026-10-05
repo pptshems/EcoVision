@@ -1,3 +1,12 @@
+PYTHON 3.14.3 COMPATIBILITY
+This package is prepared for Python 3.14.3. It uses ai-edge-litert instead of the old tflite-runtime package, which does not provide the required Python 3.14 wheel.
+
+INSTALL
+python -m pip install -r requirements.txt
+
+PUBLIC CLOUD INSTALL
+Render uses requirements-cloud.txt.
+
 ECOVISION - PC + MOBILE VERSION
 
 This version supports two modes from the same website:

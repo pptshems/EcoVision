@@ -6,6 +6,6 @@ services:
     startCommand: gunicorn cloud_app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.14.3
       - key: ECOVISION_BRIDGE_TOKEN
         sync: false
