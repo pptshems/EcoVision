@@ -1,0 +1,6 @@
+{
+  "server_url": "https://YOUR-ECOVISION-SITE.onrender.com",
+  "bridge_token": "PASTE_THE_SAME_SECRET_USED_ON_RENDER",
+  "arduino_port": "COM7",
+  "baud": 9600
+}

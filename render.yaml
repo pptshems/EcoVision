@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ecovision-public
+    runtime: python
+    buildCommand: pip install -r requirements-cloud.txt
+    startCommand: gunicorn cloud_app:app
+    envVars:
+      - key: ECOVISION_BRIDGE_TOKEN
+        sync: false
