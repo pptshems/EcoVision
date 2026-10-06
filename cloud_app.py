@@ -26,7 +26,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model_unquant.tflite')
 LABELS_PATH = os.path.join(os.path.dirname(__file__), 'labels.txt')
 MODEL_WIDTH = 224
 MODEL_HEIGHT = 224
-BRIDGE_TOKEN = os.environ.get('ECOVISION_BRIDGE_TOKEN', 'ECOVISION-DEMO-BRIDGE-2026')
+BRIDGE_TOKEN = os.environ.get('ECOVISION_BRIDGE_TOKEN', 'CHANGE_THIS_TOKEN')
 
 interpreter = None
 input_details = None
@@ -35,11 +35,6 @@ class_names = []
 queue_lock = threading.Lock()
 command_id = 0
 pending_command = None
-bridge_connected = False
-bridge_port = ''
-bridge_last_seen = 0.0
-bridge_enabled = True
-bridge_lock = threading.Lock()
 
 
 def load_model():
@@ -84,50 +79,8 @@ def index():
 
 @app.route('/api/status')
 def status():
-    with bridge_lock:
-        alive = bridge_connected and (time.time() - bridge_last_seen) < 12
-        port = bridge_port
-    return jsonify({
-        'model_ready': interpreter is not None,
-        'arduino_connected': alive,
-        'serial_port': port,
-        'ports': ([{'device': port, 'description': 'EcoVision Arduino Bridge'}] if port else []),
-        'mobile_request': True,
-        'public_mode': True,
-        'bridge_connected': alive
-    })
-
-
-@app.route('/api/ports')
-def ports():
-    with bridge_lock:
-        alive = bridge_connected and (time.time() - bridge_last_seen) < 12
-        port = bridge_port
-    return jsonify({'success': True, 'ports': ([{'device': port, 'description': 'EcoVision Arduino Bridge'}] if alive and port else [])})
-
-
-@app.route('/api/arduino/connect', methods=['POST'])
-def connect_arduino_remote():
-    global bridge_enabled
-    data = request.get_json(silent=True) or {}
-    with bridge_lock:
-        bridge_enabled = True
-        alive = bridge_connected and (time.time() - bridge_last_seen) < 12
-        port = bridge_port or data.get('port', '')
-    return jsonify({
-        'success': alive,
-        'connected': alive,
-        'port': port,
-        'message': ('Arduino bridge is connected and owns the serial port.' if alive else 'Arduino bridge is offline. Start START_ARDUINO_BRIDGE.bat on the PC.')
-    })
-
-
-@app.route('/api/arduino/disconnect', methods=['POST'])
-def disconnect_arduino_remote():
-    global bridge_enabled
-    with bridge_lock:
-        bridge_enabled = False
-    return jsonify({'success': True, 'connected': False, 'message': 'Arduino bridge disconnected by request.'})
+    return jsonify({'model_ready': interpreter is not None, 'arduino_connected': False,
+                    'mobile_request': True, 'public_mode': True})
 
 
 @app.route('/api/predict', methods=['POST'])
@@ -149,29 +102,13 @@ def predict():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/remote/heartbeat', methods=['POST'])
-def remote_heartbeat():
-    global bridge_connected, bridge_port, bridge_last_seen, bridge_enabled
-    if not authorized():
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    data = request.get_json(silent=True) or {}
-    with bridge_lock:
-        bridge_connected = bool(data.get('arduino_connected', False))
-        bridge_port = str(data.get('port', '') or '')
-        bridge_last_seen = time.time()
-        enabled = bridge_enabled
-    return jsonify({'success': True, 'enabled': enabled, 'port': bridge_port})
-
-
 @app.route('/api/remote/next')
 def remote_next():
     if not authorized():
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
     with queue_lock:
         item = pending_command
-    with bridge_lock:
-        enabled = bridge_enabled
-    return jsonify({'success': True, 'command': item, 'enabled': enabled})
+    return jsonify({'success': True, 'command': item})
 
 
 @app.route('/api/remote/ack', methods=['POST'])
