@@ -104,7 +104,7 @@ float getDistance() {
 // =====================================================
 
 void loop() {
-  // Check commands coming from EcoVision Python
+  // Check commands coming from the EcoVision browser via Web Serial
   readEcoVisionCommand();
 
   float distance = getDistance();
@@ -163,7 +163,7 @@ void loop() {
 
 
 // =====================================================
-// COMMANDS FROM ECOVISION PYTHON
+// COMMANDS FROM ECOVISION BROWSER (WEB SERIAL)
 // =====================================================
 
 void readEcoVisionCommand() {

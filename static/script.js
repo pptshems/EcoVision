@@ -39,6 +39,7 @@ let serialReader = null;
 let serialKeepReading = false;
 let serialBuffer = "";
 let autoScanEnabled = false;
+let classifiedStatusTimer = null;
 
 function setDot(dot, state) {
     if (!dot) return;
@@ -386,29 +387,35 @@ async function performScan(automatic = false) {
             sent = await sendArduinoCommand(data.arduino_command);
         }
 
-        // Show the physical object state rather than exposing the internal
-        // Arduino command/result-transfer state in the System Status card.
-        // Yellow means the object has just been classified. The status will
-        // return to "Waiting for object" when the HC-SR04 reports removal.
         awaitingRemoval = Boolean(serialPort);
-        if (objectStatus) objectStatus.textContent = "Object classified";
+        // Show a short, clear yellow "Object Classified" state instead of
+        // exposing the internal Arduino communication result.
+        if (classifiedStatusTimer) clearTimeout(classifiedStatusTimer);
+        if (objectStatus) objectStatus.textContent = "Object Classified";
         setDot(objectDot, "warning");
 
         if (sent) {
-            footerMessage.textContent = "Classification complete • Remove the object for the next scan";
+            footerMessage.textContent = "Classification complete • Remove the object when ready";
         } else if (!isMobile && !serialPort) {
-            footerMessage.textContent = "Classification complete • Connect an Arduino to use automatic scanning";
-            // Without an Arduino there is no physical object sensor, so the
-            // status can return to the idle state after the result is shown.
-            window.setTimeout(() => {
-                if (!serialPort && objectStatus) {
-                    objectStatus.textContent = "Waiting for object";
-                    setDot(objectDot, "online");
-                }
-            }, 2200);
+            footerMessage.textContent = "Classification complete • Connect an Arduino to use the sorter";
         } else {
-            footerMessage.textContent = "Classification complete • Ready for another scan";
+            footerMessage.textContent = "Classification complete";
         }
+
+        // After the result has been displayed, return the status to its idle
+        // state. The Arduino's OBJECT_REMOVED message will also restore this
+        // state immediately when the object is actually removed.
+        classifiedStatusTimer = setTimeout(() => {
+            if (!scanning) {
+                if (objectStatus) objectStatus.textContent = "Waiting for object";
+                setDot(objectDot, "online");
+                if (objectPresent) {
+                    footerMessage.textContent = "Object remains detected • Remove it before the next automatic scan";
+                } else {
+                    footerMessage.textContent = "Ready • Place an item in front of the sensor";
+                }
+            }
+        }, 2500);
     } catch (error) {
         clearInterval(animationTimer);
         console.error(error);
@@ -442,6 +449,9 @@ function showResult(data) {
 scanButton.addEventListener("click", () => performScan(false));
 
 resetButton.addEventListener("click", () => {
+    if (classifiedStatusTimer) clearTimeout(classifiedStatusTimer);
+    if (objectStatus) objectStatus.textContent = objectPresent ? "Object detected" : "Waiting for object";
+    setDot(objectDot, objectPresent ? "warning" : "online");
     resultIcon.textContent = "♻";
     resultLabel.textContent = "WAITING";
     resultLabel.style.color = "#f1f5f9";

@@ -128,3 +128,14 @@ to the visitor's PC.
 
 This version removes that server-side serial dependency and uses Web Serial
 in the visitor's browser instead.
+
+
+LATEST AUTO-SCAN / STATUS BEHAVIOR
+-----------------------------------
+- The HC-SR04 sends OBJECT_DETECTED to the browser when an item enters the detection zone.
+- The browser automatically captures the camera frame and sends it to /api/predict.
+- After classification, Object Sensor shows "Object Classified" with a yellow dot instead of exposing "Result sent to Arduino".
+- After 2.5 seconds it returns to "Waiting for object".
+- If the object is removed, the Arduino sends OBJECT_REMOVED and the browser immediately returns to "Waiting for object".
+- The automatic scan is locked until the current object is removed, preventing repeated scans of the same item.
+- The explanatory serial sentence below System Status has been removed.
