@@ -1,6 +1,5 @@
 Flask
 numpy
 Pillow
-pyserial
-opencv-python
 tensorflow
+gunicorn

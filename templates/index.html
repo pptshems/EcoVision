@@ -29,13 +29,9 @@
 
     <div class="controlbar desktop-only">
         <span class="control-label">ARDUINO</span>
-        <label class="port-label" for="portSelect">COM PORT</label>
-        <select id="portSelect" class="port-select">
-            <option value="COM7">COM7</option>
-        </select>
-        <button id="refreshPortsButton" class="refresh-button" title="Refresh COM ports">↻</button>
         <button id="arduinoButton" class="secondary-button">Connect Arduino</button>
-        <span id="portText" class="port-text">9600 baud</span>
+        <span id="portText" class="port-text">Choose your Arduino from the browser</span>
+        <span class="serial-note">Chrome / Edge • USB • 9600 baud</span>
     </div>
 
     <main class="main">
@@ -77,7 +73,7 @@
             </div>
 
             <div class="camera-help desktop-only">
-                Place the waste item in front of the HC-SR04 sensor. EcoVision will automatically scan it.
+                Connect your Arduino above. The HC-SR04 can automatically trigger a scan when an object is detected.
             </div>
             <div class="camera-help mobile-only">Use your phone camera • Position the item clearly inside the frame</div>
         </section>
@@ -141,6 +137,8 @@
                     </span>
                     <strong id="objectStatus">Waiting for object</strong>
                 </div>
+
+                <div class="serial-help">Arduino communication happens directly between this browser and the USB Arduino. Render never accesses your COM port.</div>
             </section>
 
             <button id="scanButton" class="scan-button">

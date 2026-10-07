@@ -1,71 +1,130 @@
-ECOVISION - LAPTOP + MOBILE SETUP
-=================================
+ECOVISION - PUBLIC WEBSITE + PERSONAL ARDUINO
+===============================================
 
-WHAT THIS VERSION DOES
-----------------------
-Laptop/PC:
-- Uses the laptop camera.
-- Can connect to Arduino over USB/COM port.
-- HC-SR04 automatic scanning remains available.
-- Arduino controls and system status are visible.
+IMPORTANT ARCHITECTURE CHANGE
+-----------------------------
+This version is designed for a public Render/GitHub website.
 
-Mobile phone:
-- Uses the phone's own rear camera.
-- Does NOT connect to Arduino or use COM ports.
-- Arduino controls and SYSTEM STATUS are hidden.
-- Scan Now sends the camera image to the Flask server on the laptop.
+Render runs the Flask AI prediction server only. It NEVER tries to open a
+visitor's COM port. On a desktop/laptop, the visitor's Chrome/Edge browser
+connects directly to that visitor's Arduino using the Web Serial API.
 
-NETWORK ARCHITECTURE
---------------------
-Phone camera -> Wi-Fi -> Laptop Flask server -> TFLite model
-Laptop -> USB -> Arduino
+Architecture:
 
-IMPORTANT
----------
-The phone and laptop must be connected to the same Wi-Fi network.
-Android/iPhone browsers require HTTPS for camera access when the site is opened from another device.
+  Visitor browser -> HTTPS Render website -> AI prediction
+         |
+         +------ Web Serial (USB) ------> Visitor's Arduino
 
-LAPTOP SETUP
-------------
-1. Extract this folder.
-2. Connect Arduino to the laptop by USB.
-3. Upload EcoVision_Final/EcoVision_Final.ino using Arduino IDE.
-4. Check the Arduino COM port in Arduino IDE.
-5. Open Command Prompt in this folder.
-6. Install packages:
-   pip install -r requirements.txt
-7. Laptop-only test:
-   python app.py
-8. Open on laptop:
-   http://127.0.0.1:5000
+The Arduino is therefore the visitor's own Arduino, not the Arduino attached
+to the computer where the website was developed.
 
-MOBILE SETUP
-------------
-1. Connect the phone and laptop to the SAME Wi-Fi.
-2. On the laptop run:
-   python app.py --https
-3. Find the laptop Wi-Fi IPv4 address with:
-   ipconfig
-4. On the phone open Chrome and enter:
-   https://LAPTOP-IP:5000
-   Example: https://192.168.1.8:5000
-5. If Chrome displays a local certificate warning, use Advanced/Continue if offered.
-6. Allow camera permission.
-7. The phone uses its rear camera automatically when supported.
-8. Tap SCAN NOW to classify an item.
+1. ARDUINO SETUP
+----------------
+Upload:
+  EcoVision_Final/EcoVision_Final.ino
 
-FIREWALL
---------
-If the phone cannot open the page, allow Python/Flask through Windows Firewall on Private networks.
-You can also allow inbound TCP port 5000 on the laptop's Private network.
+to an Arduino UNO.
 
-ARDUINO ON LAPTOP
------------------
-The phone never needs the Arduino USB/COM connection.
-Keep the Arduino connected to the laptop for HC-SR04, LCD, servo and LEDs.
+Connections used by the sketch:
+  HC-SR04 TRIG  -> D2
+  HC-SR04 ECHO  -> D3
+  Green LED      -> D8
+  Red LED        -> D7
+  Servo          -> D9
+  LCD SDA        -> A4
+  LCD SCL        -> A5
 
-NOTES
------
-- Mobile automatic HC-SR04 scanning is intentionally disabled because the phone has no Arduino connection.
-- Mobile classification still uses the same model_unquant.tflite and labels.txt on the laptop.
-- The server must remain running while the phone is being used.
+The sketch uses 9600 baud.
+
+2. PUBLIC WEBSITE DEPLOYMENT
+-----------------------------
+Deploy this folder to GitHub and connect the repository to Render as a
+Python web service.
+
+Start command:
+  gunicorn app:app
+
+If your Render service uses a different start command, use the normal Flask
+/Gunicorn command configured for your service.
+
+The Flask app reads PORT automatically from Render.
+
+3. VISITOR LAPTOP/PC
+---------------------
+Use Google Chrome or Microsoft Edge on a desktop/laptop.
+
+Open your public HTTPS EcoVision link.
+
+1. Allow camera permission.
+2. Connect the Arduino to that computer by USB.
+3. Click "Connect Arduino" on EcoVision.
+4. In the browser serial-device chooser, select the visitor's Arduino.
+5. Wait for "Arduino Connected".
+6. Place an object near the HC-SR04.
+7. The Arduino sends OBJECT_DETECTED to the browser.
+8. The browser captures the camera frame and sends it to Render for AI.
+9. Render returns BIO / NON_BIO.
+10. The browser sends that command directly to the visitor's Arduino.
+
+No COM7, COM8, etc. is hard-coded. Each visitor chooses their own device.
+
+4. MOBILE PHONE
+---------------
+On mobile, Arduino controls are hidden. The website uses the phone's own
+camera. The mobile layout also hides SYSTEM STATUS.
+
+Open the public HTTPS link in Android Chrome. Allow camera access and press
+SCAN NOW.
+
+The phone does not need an Arduino.
+
+5. BROWSER SUPPORT
+------------------
+Web Serial is supported primarily by Chromium browsers such as:
+  - Google Chrome desktop
+  - Microsoft Edge desktop
+
+For the Arduino part, use a laptop/desktop with Chrome or Edge. Safari and
+iPhone browsers should be treated as camera-only for this project.
+
+6. SECURITY / PRIVACY BEHAVIOUR
+-------------------------------
+A website cannot silently open arbitrary USB/serial devices. The visitor must
+click "Connect Arduino" and explicitly select a device in the browser dialog.
+This is a browser security requirement.
+
+Render never receives the visitor's COM port and never controls the USB
+connection. The browser performs the serial communication locally.
+
+7. RUN LOCALLY (OPTIONAL)
+--------------------------
+Install requirements:
+  pip install -r requirements.txt
+
+Start:
+  python app.py
+
+Then open:
+  http://127.0.0.1:5000
+
+For a phone on the same network, use HTTPS because camera access from another
+device normally requires a secure context.
+
+8. IF "CONNECT ARDUINO" DOES NOT APPEAR
+-----------------------------------------
+Check that:
+  - You are on a desktop/laptop.
+  - You are using Chrome or Edge.
+  - The page is HTTPS (Render provides HTTPS).
+  - The Arduino USB cable supports data, not power only.
+  - The Arduino is connected before clicking Connect Arduino.
+  - The Arduino sketch has been uploaded successfully.
+
+9. IMPORTANT DIFFERENCE FROM THE OLD VERSION
+---------------------------------------------
+The old Flask version attempted to use Python/pyserial and a fixed COM7 on
+the server. That cannot work for a public Render website because COM7 belongs
+to the visitor's PC.
+
+This version removes that server-side serial dependency and uses Web Serial
+in the visitor's browser instead.
