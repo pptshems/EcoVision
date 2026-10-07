@@ -387,15 +387,15 @@ async function performScan(automatic = false) {
         }
 
         awaitingRemoval = Boolean(serialPort);
-        if (objectStatus) objectStatus.textContent = "Remove Object";
+        if (objectStatus) objectStatus.textContent = "Object classified";
         setDot(objectDot, "warning");
 
         if (sent) {
-            footerMessage.textContent = "Classification complete • Remove the object";
+            footerMessage.textContent = "Classification complete • Arduino received the result • Remove the object";
         } else if (!isMobile && !serialPort) {
-            footerMessage.textContent = "Classification complete • Remove the object";
+            footerMessage.textContent = "Classification complete • Connect an Arduino to control the sorter";
         } else {
-            footerMessage.textContent = "Classification complete • Remove the object";
+            footerMessage.textContent = "Classification complete • Ready for another scan";
         }
     } catch (error) {
         clearInterval(animationTimer);
