@@ -386,14 +386,26 @@ async function performScan(automatic = false) {
             sent = await sendArduinoCommand(data.arduino_command);
         }
 
+        // Show the physical object state rather than exposing the internal
+        // Arduino command/result-transfer state in the System Status card.
+        // Yellow means the object has just been classified. The status will
+        // return to "Waiting for object" when the HC-SR04 reports removal.
         awaitingRemoval = Boolean(serialPort);
         if (objectStatus) objectStatus.textContent = "Object classified";
         setDot(objectDot, "warning");
 
         if (sent) {
-            footerMessage.textContent = "Classification complete • Arduino received the result • Remove the object";
+            footerMessage.textContent = "Classification complete • Remove the object for the next scan";
         } else if (!isMobile && !serialPort) {
-            footerMessage.textContent = "Classification complete • Connect an Arduino to control the sorter";
+            footerMessage.textContent = "Classification complete • Connect an Arduino to use automatic scanning";
+            // Without an Arduino there is no physical object sensor, so the
+            // status can return to the idle state after the result is shown.
+            window.setTimeout(() => {
+                if (!serialPort && objectStatus) {
+                    objectStatus.textContent = "Waiting for object";
+                    setDot(objectDot, "online");
+                }
+            }, 2200);
         } else {
             footerMessage.textContent = "Classification complete • Ready for another scan";
         }
