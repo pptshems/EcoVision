@@ -1,4 +1,5 @@
 const video = document.getElementById("video");
+const isMobile = window.matchMedia("(max-width: 700px)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const canvas = document.getElementById("canvas");
 
 const scanButton = document.getElementById("scanButton");
@@ -37,13 +38,6 @@ const objectStatus = document.getElementById("objectStatus");
 
 const footerMessage = document.getElementById("footerMessage");
 
-// Device mode: PC keeps the full Arduino workflow; mobile uses camera + AI only.
-const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-const arduinoControls = document.getElementById("arduinoControls");
-const connectionArea = document.getElementById("connectionArea");
-
-document.body.dataset.mode = isMobileDevice ? "mobile" : "pc";
-
 let cameraStream = null;
 let scanning = false;
 let lastSensorEventId = 0;
@@ -59,154 +53,62 @@ function setDot(dot, state) {
 }
 
 async function startCamera() {
-    // Android Chrome is strict about camera permissions and supported constraints.
-    // Try the rear camera first, then progressively fall back to simpler constraints.
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showCameraError("Camera is not available", "Open EcoVision in Chrome over HTTPS.");
-        return;
-    }
+    try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Camera API is unavailable. Open EcoVision using HTTPS.");
+        }
 
-    if (isMobileDevice && location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-        showCameraError("Secure connection required", "Open the EcoVision HTTPS link in Chrome to use the camera.");
-        return;
-    }
+        const constraints = isMobile
+            ? { video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }
+            : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }, audio: false };
 
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
-
-    const mobileConstraints = [
-        {
-            video: {
-                facingMode: { exact: "environment" },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                frameRate: { ideal: 30, max: 30 }
-            }, audio: false
-        },
-        {
-            video: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                frameRate: { ideal: 30 }
-            }, audio: false
-        },
-        { video: true, audio: false }
-    ];
-
-    const desktopConstraints = [{
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: false
-    }];
-
-    const attempts = isMobileDevice ? mobileConstraints : desktopConstraints;
-    let lastError = null;
-
-    for (const constraints of attempts) {
         try {
             cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-            break;
-        } catch (error) {
-            lastError = error;
-            console.warn("Camera attempt failed:", error.name, error.message);
+        } catch (firstError) {
+            if (isMobile) cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            else throw firstError;
         }
-    }
 
-    if (!cameraStream) {
-        console.error(lastError);
-        const name = lastError?.name || "UnknownError";
-        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-            showCameraError("Camera permission denied", "Tap the camera permission in Chrome and choose Allow, then reload.");
-        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-            showCameraError("No camera found", "Check that your phone camera is available and try again.");
-        } else if (name === "NotReadableError" || name === "TrackStartError") {
-            showCameraError("Camera is busy", "Close other apps using the camera and try again.");
-        } else {
-            showCameraError("Camera unavailable", "Use the HTTPS EcoVision link in Chrome and allow camera access.");
-        }
-        return;
-    }
-
-    video.srcObject = cameraStream;
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-
-    // Let the browser choose the native stream orientation; CSS keeps the preview
-    // unmirrored and fills the phone camera frame naturally.
-    try { await video.play(); } catch (e) {
-        console.debug("Camera playback deferred until user interaction", e);
+        video.srcObject = cameraStream;
+        cameraMessage.classList.add("hidden");
+        cameraBadge.textContent = "READY";
+        cameraStatus.textContent = "Ready";
+        setDot(cameraDot, "online");
+    } catch (error) {
+        console.error(error);
         cameraMessage.classList.remove("hidden");
-        cameraMessage.innerHTML = `<div class="camera-icon">▶</div><div>Tap here to start the camera</div>`;
+        cameraMessage.innerHTML = `<div class="camera-icon">⚠</div><div>Camera access denied or unavailable</div>`;
+        cameraBadge.textContent = "ERROR";
+        cameraStatus.textContent = "Error";
+        setDot(cameraDot, "offline");
+        footerMessage.textContent = "Camera unavailable • Please allow camera permission";
     }
-
-    cameraMessage.classList.add("hidden");
-    cameraBadge.textContent = isMobileDevice ? "READY" : "READY";
-    cameraStatus.textContent = "Ready";
-    setDot(cameraDot, "online");
-    footerMessage.textContent = isMobileDevice
-        ? "Ready • Point the camera at an item and press SCAN NOW"
-        : "Ready • Place an item in front of the sensor";
 }
-
-function showCameraError(title, help) {
-    cameraMessage.classList.remove("hidden");
-    cameraMessage.innerHTML = `<div class="camera-icon">⚠</div><div><strong>${title}</strong></div><div class="camera-help-inline">${help}</div>`;
-    cameraBadge.textContent = "CAMERA OFF";
-    cameraStatus.textContent = "Unavailable";
-    setDot(cameraDot, "offline");
-    footerMessage.textContent = help;
-}
-
-// Some Android browsers defer video playback until a touch. Tapping the preview
-// retries playback without requiring a second page reload.
-cameraMessage.addEventListener("click", async () => {
-    if (cameraStream) {
-        try {
-            await video.play();
-            cameraMessage.classList.add("hidden");
-        } catch (e) {
-            console.debug("Camera playback still unavailable", e);
-        }
-    } else {
-        await startCamera();
-    }
-});
 
 async function checkStatus() {
     try {
-        const response = await fetch("/api/status");
+        const response = await fetch("/api/status", { cache: "no-store" });
         const data = await response.json();
+        if (isMobile) return; // Mobile never uses Arduino/COM controls.
 
         if (data.model_ready) {
-            modelStatus.textContent = "Ready";
-            setDot(modelDot, "online");
+            modelStatus.textContent = "Ready"; setDot(modelDot, "online");
         } else {
-            modelStatus.textContent = "Error";
-            setDot(modelDot, "offline");
+            modelStatus.textContent = "Error"; setDot(modelDot, "offline");
         }
-
-        if (!isMobileDevice) {
-            updatePortList(data.ports || [], data.serial_port);
-            updateArduinoStatus(data.arduino_connected);
-
-            if (data.sensor) {
-                handleSensorData(data.sensor);
-            }
-        }
+        updatePortList(data.ports || [], data.serial_port);
+        updateArduinoStatus(data.arduino_connected);
+        if (data.sensor) handleSensorData(data.sensor);
     } catch (error) {
         console.error(error);
-        modelStatus.textContent = "Offline";
-        setDot(modelDot, "offline");
-        connectionText.textContent = "Server Offline";
-        setDot(connectionDot, "offline");
+        if (!isMobile) {
+            modelStatus.textContent = "Offline"; setDot(modelDot, "offline");
+            connectionText.textContent = "Server Offline"; setDot(connectionDot, "offline");
+        }
     }
 }
 
 async function pollSensor() {
-    if (isMobileDevice) return;
     if (sensorPolling) return;
     sensorPolling = true;
 
@@ -253,7 +155,6 @@ function handleSensorData(data) {
 }
 
 async function refreshPorts() {
-    if (isMobileDevice) return;
     try {
         refreshPortsButton.disabled = true;
         refreshPortsButton.textContent = "…";
@@ -313,7 +214,7 @@ function updateArduinoStatus(connected) {
     }
 }
 
-if (!isMobileDevice) arduinoButton.addEventListener("click", async () => {
+arduinoButton.addEventListener("click", async () => {
     const currentlyConnected = arduinoButton.textContent.includes("Disconnect");
     arduinoButton.disabled = true;
 
@@ -497,35 +398,21 @@ resetButton.addEventListener("click", () => {
     progressBar.style.width = "0%";
     progressBar.style.background = "#22c55e";
     originalLabel.textContent = "No scan performed yet";
-    footerMessage.textContent = isMobileDevice
-        ? "Ready • Point the camera at an item and press SCAN NOW"
-        : (objectPresent
-            ? "Object is still present • Remove it before the next automatic scan"
-            : "Ready • Place an item in front of the sensor");
+    footerMessage.textContent = objectPresent
+        ? "Object is still present • Remove it before the next automatic scan"
+        : "Ready • Place an item in front of the sensor";
 });
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function configureDeviceMode() {
-    if (isMobileDevice) {
-        // Hide all Arduino-specific UI on phones.
-        arduinoControls?.classList.add("mobile-hidden");
-        connectionArea?.classList.add("mobile-hidden");
-        arduinoDot?.closest(".status-row")?.classList.add("mobile-hidden");
-        objectDot?.closest(".status-row")?.classList.add("mobile-hidden");
-
-        cameraBadge.textContent = "PHONE CAMERA";
-        objectStatus.textContent = "Camera scan";
-        setDot(objectDot, "online");
-        footerMessage.textContent = "Mobile mode • Allow camera access, then press SCAN NOW";
-    }
-}
-
-configureDeviceMode();
 startCamera();
-checkStatus();
-if (!isMobileDevice) refreshPorts();
-setInterval(checkStatus, 5000);
-setInterval(pollSensor, 250);
+if (!isMobile) {
+    checkStatus();
+    refreshPorts();
+    setInterval(checkStatus, 5000);
+    setInterval(pollSensor, 250);
+} else {
+    footerMessage.textContent = "Ready • Point the camera at a waste item";
+}

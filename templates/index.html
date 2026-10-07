@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
-<body data-mode="auto">
-<div class="app">
+<body>
+<div class="app" id="appRoot">
 
     <header class="topbar">
         <div class="brand">
@@ -21,13 +21,13 @@
             </div>
         </div>
 
-        <div class="connection" id="connectionArea">
+        <div class="connection desktop-only">
             <span id="connectionDot" class="dot offline"></span>
             <span id="connectionText">Checking Arduino...</span>
         </div>
     </header>
 
-    <div class="controlbar" id="arduinoControls">
+    <div class="controlbar desktop-only">
         <span class="control-label">ARDUINO</span>
         <label class="port-label" for="portSelect">COM PORT</label>
         <select id="portSelect" class="port-select">
@@ -76,9 +76,10 @@
                 <div class="camera-corner bottom-right"></div>
             </div>
 
-            <div class="camera-help">
-                PC: Place the waste item in front of the HC-SR04 sensor. EcoVision will automatically scan it. On mobile, use SCAN NOW.
+            <div class="camera-help desktop-only">
+                Place the waste item in front of the HC-SR04 sensor. EcoVision will automatically scan it.
             </div>
+            <div class="camera-help mobile-only">Use your phone camera • Position the item clearly inside the frame</div>
         </section>
 
         <!-- RIGHT SIDE -->
@@ -106,7 +107,7 @@
                 </div>
             </section>
 
-            <section class="card status-card mobile-system-status">
+            <section class="card status-card desktop-only">
                 <div class="section-label">SYSTEM STATUS</div>
 
                 <div class="status-row">

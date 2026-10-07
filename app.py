@@ -2,35 +2,24 @@ from flask import Flask, render_template, request, jsonify
 import os
 import time
 import threading
+import argparse
 
 import numpy as np
 import serial
 from serial.tools import list_ports
 from PIL import Image
 
-# Python 3.14 compatible LiteRT backend.
 try:
-    from ai_edge_litert import interpreter as tflite
+    import tflite_runtime.interpreter as tflite
 except ImportError:
     try:
-        import tflite_runtime.interpreter as tflite
+        from tensorflow import lite as tflite
     except ImportError:
-        try:
-            from tensorflow import lite as tflite
-        except ImportError as exc:
-            raise SystemExit(
-                "LiteRT is not installed. Install with: pip install ai-edge-litert"
-            ) from exc
+        raise SystemExit(
+            "TFLite is not installed. Install tflite-runtime or TensorFlow."
+        )
 
 app = Flask(__name__)
-
-
-def is_mobile_request(req):
-    """Detect mobile browsers so API prediction can skip Arduino commands."""
-    user_agent = (req.headers.get("User-Agent") or "").lower()
-    return any(token in user_agent for token in (
-        "android", "iphone", "ipad", "ipod", "mobile", "windows phone"
-    ))
 
 # ------------------------------------------------------------
 # SETTINGS
@@ -324,8 +313,7 @@ def status():
         "baud_rate": BAUD_RATE,
         "ports": get_serial_ports(),
         "labels": class_names,
-        "sensor": sensor,
-        "mobile_request": is_mobile_request(request)
+        "sensor": sensor
     })
 
 
@@ -378,13 +366,7 @@ def api_predict():
 
     try:
         result = predict_image(image)
-
-        # Mobile browsers use camera + AI only. Keep Arduino fully optional.
-        if is_mobile_request(request):
-            sent = False
-            arduino_message = "Mobile mode: Arduino not required."
-        else:
-            sent, arduino_message = send_to_arduino(result["arduino_command"])
+        sent, arduino_message = send_to_arduino(result["arduino_command"])
 
         return jsonify({
             "success": True,
@@ -405,17 +387,18 @@ def api_predict():
 # STARTUP
 # ------------------------------------------------------------
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="EcoVision Flask server")
+    parser.add_argument("--https", action="store_true", help="Enable HTTPS for phone camera access")
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=5000)
+    args = parser.parse_args()
+
     load_model()
     connect_arduino()
 
-    # Mobile browsers require a secure context for camera access when
-    # the site is opened through the PC's LAN IP. Set ECOVISION_HTTPS=1
-    # to run the same app over HTTPS when using an Android phone.
-    use_https = os.environ.get("ECOVISION_HTTPS", "0") == "1"
+    ssl_context = "adhoc" if args.https else None
+    scheme = "https" if args.https else "http"
+    print(f"EcoVision server: {scheme}://0.0.0.0:{args.port}")
+    print(f"Phone URL: {scheme}://<LAPTOP-IP>:{args.port}")
 
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False,
-        ssl_context="adhoc" if use_https else None
-    )
+    app.run(host=args.host, port=args.port, debug=False, threaded=True, ssl_context=ssl_context)
