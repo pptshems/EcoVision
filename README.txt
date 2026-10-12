@@ -139,3 +139,20 @@ LATEST AUTO-SCAN / STATUS BEHAVIOR
 - If the object is removed, the Arduino sends OBJECT_REMOVED and the browser immediately returns to "Waiting for object".
 - The automatic scan is locked until the current object is removed, preventing repeated scans of the same item.
 - The explanatory serial sentence below System Status has been removed.
+
+
+NEW IN THIS VERSION: "DEEP LAGOON" INTERFACE
+---------------------------------------------
+- One-screen layout. The page never scrolls on PC, tablet or phone.
+- Large 16:9 camera on desktop (fills the phone screen on mobile).
+- Colour follows the result: aqua = idle, amber = scanning,
+  lime = biodegradable, coral = non-biodegradable.
+- Live proximity gauge and distance chip fed by the HC-SR04 (trigger line at 20 cm).
+- Confidence ring, eco tip for every result, and a result banner over the camera.
+- Statistics (scanned / bio / non-bio) with a split bar, saved in the browser.
+- History tab with photo thumbnails of recent scans.
+- Arduino tab: live serial log plus "Test Bio" / "Test Non-bio" buttons
+  to check the servo, LEDs and LCD without scanning anything.
+- Header toggles: Auto-scan on/off, Sound on/off, Fullscreen. Space bar = scan.
+- Flip button cycles through available cameras.
+No change was needed in app.py or the Arduino sketch.

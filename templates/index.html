@@ -1,165 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoVision</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#071820">
+<title>EcoVision · Smart Waste Sorter</title>
+<link rel="icon" href="{{ url_for('static', filename='ecovision-logo.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
-<div class="app" id="appRoot">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0V8zM12 17v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM17 8a5 5 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-9 5-14 15-14 0 10-5 15-14 15M5 19c2-5 5-8 9-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-bin" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 12h3l2-6 4 12 3-9 2 3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4a3 3 0 0 0-3 0zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
 
-    <header class="topbar">
-        <div class="brand">
-            <div class="brand-logo-frame">
-                <img class="brand-logo" src="{{ url_for('static', filename='ecovision-logo.png') }}" alt="EcoVision logo">
-            </div>
-            <div class="brand-text">
-                <div class="brand-name"><span>Eco</span>Vision</div>
-                <div class="brand-caption">Smart waste classification using AI + Arduino</div>
-            </div>
-        </div>
+<div class="app" id="app" data-state="idle">
 
-        <div class="connection desktop-only">
-            <span id="connectionDot" class="dot offline"></span>
-            <span id="connectionText">Checking Arduino...</span>
-        </div>
-    </header>
-
-    <div class="controlbar desktop-only">
-        <span class="control-label">ARDUINO</span>
-        <button id="arduinoButton" class="secondary-button">Connect Arduino</button>
-        <span id="portText" class="port-text">Choose your Arduino from the browser</span>
-        <span class="serial-note">Chrome / Edge • USB • 9600 baud</span>
+  <!-- ============ HEADER ============ -->
+  <header class="top">
+    <div class="brand">
+      <img class="logo" src="{{ url_for('static', filename='ecovision-logo.png') }}" alt="EcoVision logo">
+      <div class="brand-text">
+        <h1>EcoVision</h1>
+        <p>AI waste sorter</p>
+      </div>
     </div>
 
-    <main class="main">
+    <div class="pills" role="status" aria-label="System status">
+      <span class="pill"><i id="dotCam" class="dot"></i><svg><use href="#i-cam"/></svg><b>Camera</b><em id="txtCam">Starting</em></span>
+      <span class="pill desk"><i id="dotArd" class="dot"></i><svg><use href="#i-plug"/></svg><b>Arduino</b><em id="txtArd">Offline</em></span>
+      <span class="pill"><i id="dotAi" class="dot"></i><svg><use href="#i-brain"/></svg><b>AI</b><em id="txtAi">Checking</em></span>
+      <span class="pill desk"><i id="dotObj" class="dot"></i><svg><use href="#i-wave"/></svg><b>Sensor</b><em id="txtObj">Idle</em></span>
+    </div>
 
-        <!-- CAMERA -->
-        <section class="camera-card card">
-            <div class="card-title">
-                <span>LIVE CAMERA</span>
-                <span id="cameraBadge" class="badge">STARTING</span>
+    <div class="tools">
+      <button id="btnArduino" class="btn connect desk" title="Connect your Arduino over USB">
+        <svg><use href="#i-plug"/></svg><span id="btnArduinoText">Connect Arduino</span>
+      </button>
+      <button id="btnAuto" class="icon-btn desk on" title="Auto-scan when the sensor detects an object" aria-pressed="true">
+        <svg><use href="#i-bolt"/></svg><span>Auto</span>
+      </button>
+      <button id="btnSound" class="icon-btn on" title="Sound effects" aria-pressed="true">
+        <svg><use href="#i-sound"/></svg><span class="hide-sm">Sound</span>
+      </button>
+      <button id="btnFull" class="icon-btn desk" title="Fullscreen">
+        <svg><use href="#i-full"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <!-- CAMERA COLUMN -->
+    <section class="cam-col">
+      <div class="stage" id="stage">
+        <div class="cam" id="cam">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="canvas" width="224" height="224" hidden></canvas>
+
+          <!-- HUD -->
+          <div class="hud">
+            <div class="live"><i></i><span id="liveText">LIVE</span></div>
+            <div class="dist desk" id="distChip"><svg><use href="#i-wave"/></svg><span id="distText">-- cm</span></div>
+
+            <div class="reticle" id="reticle">
+              <span></span><span></span><span></span><span></span>
+              <div class="sweep"></div>
             </div>
 
-            <div class="camera-container">
-
-                <video id="video" autoplay playsinline muted></video>
-
-                <canvas id="canvas" width="224" height="224"></canvas>
-
-                <div id="cameraMessage" class="camera-message">
-                    <div class="camera-icon">📷</div>
-                    <div>Starting camera...</div>
-                </div>
-
-                <!-- Scanning overlay -->
-                <div id="scanOverlay" class="scan-overlay hidden">
-                    <div class="scan-corners"></div>
-                    <div class="scan-line"></div>
-
-                    <div class="scan-center">
-                        <div class="scanner-ring"></div>
-                        <div class="scan-text">SCANNING</div>
-                        <div id="scanCountdown">Analyzing object...</div>
-                    </div>
-                </div>
-
-                <div class="camera-corner top-left"></div>
-                <div class="camera-corner top-right"></div>
-                <div class="camera-corner bottom-left"></div>
-                <div class="camera-corner bottom-right"></div>
+            <div class="scan-msg" id="scanMsg">
+              <div class="ring"></div>
+              <strong>Analyzing</strong>
+              <small id="scanSub">Reading the object…</small>
             </div>
 
-            <div class="camera-help desktop-only">
-                Connect your Arduino above. The HC-SR04 can automatically trigger a scan when an object is detected.
+            <div class="toast" id="resultToast">
+              <div class="toast-ico" id="toastIco"><svg><use href="#i-leaf"/></svg></div>
+              <div class="toast-txt">
+                <strong id="toastTitle">Biodegradable</strong>
+                <small id="toastSub">98.2% confidence</small>
+              </div>
             </div>
-            <div class="camera-help mobile-only">Use your phone camera • Position the item clearly inside the frame</div>
-        </section>
+          </div>
 
-        <!-- RIGHT SIDE -->
-        <aside class="side">
+          <div class="cam-msg" id="camMsg">
+            <svg><use href="#i-cam"/></svg>
+            <p>Starting camera…</p>
+            <small>Allow camera access when asked</small>
+          </div>
+        </div>
+      </div>
 
-            <section class="card result-card">
-                <div class="section-label">CLASSIFICATION RESULT</div>
+      <!-- ACTION DOCK -->
+      <div class="dock">
+        <div class="gauge desk" id="gauge" title="Live distance from the ultrasonic sensor">
+          <div class="gauge-head"><span>Proximity · trigger at 20 cm</span><b id="gaugeVal">--</b></div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="gaugeFill"></div>
+            <div class="gauge-mark" style="left:50%"></div>
+          </div>
+        </div>
+        <button id="btnScan" class="btn primary"><svg><use href="#i-scan"/></svg><span>Scan now</span></button>
+        <button id="btnFlip" class="btn ghost" title="Switch camera"><svg><use href="#i-flip"/></svg><span>Flip</span></button>
+        <button id="btnReset" class="btn ghost" title="Clear result"><svg><use href="#i-reset"/></svg><span>Reset</span></button>
+      </div>
+    </section>
 
-                <div id="resultIcon" class="result-icon">♻</div>
+    <!-- SIDE COLUMN -->
+    <aside class="side">
 
-                <div id="resultLabel" class="result-label">
-                    WAITING
-                </div>
+      <!-- RESULT -->
+      <section class="card result" id="resultCard">
+        <div class="res-top">
+          <div class="res-ico" id="resIcon"><svg><use href="#i-scan"/></svg></div>
+          <div class="res-main">
+            <small class="eyebrow-lite" id="resKicker">Classification</small>
+            <h2 id="resLabel">Ready to scan</h2>
+            <p id="resSub">Place an item in front of the camera.</p>
+          </div>
+          <div class="conf" id="conf">
+            <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" class="c-bg"/><circle cx="22" cy="22" r="18" class="c-fg" id="confArc"/></svg>
+            <b id="confNum">--</b>
+          </div>
+        </div>
+        <div class="tip" id="resTip"><svg><use href="#i-leaf"/></svg><span>Eco tip: sort waste at the source to double recycling rates.</span></div>
+      </section>
 
-                <div id="resultConfidence" class="confidence">
-                    Confidence: --
-                </div>
+      <!-- STATS -->
+      <section class="card stats">
+        <div class="stat"><b id="stTotal">0</b><span>Scanned</span></div>
+        <div class="stat bio"><b id="stBio">0</b><span>Bio</span></div>
+        <div class="stat non"><b id="stNon">0</b><span>Non-bio</span></div>
+        <div class="split" title="Share of biodegradable vs non-biodegradable">
+          <i id="splitBio" style="width:50%"></i><i id="splitNon" style="width:50%"></i>
+        </div>
+      </section>
 
-                <div class="progress-track">
-                    <div id="progressBar" class="progress-bar"></div>
-                </div>
+      <!-- TABBED PANEL -->
+      <section class="card panel">
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="history" role="tab">History</button>
+          <button class="tab desk" data-tab="serial" role="tab">Arduino</button>
+          <button class="tab" data-tab="guide" role="tab">Guide</button>
+        </nav>
 
-                <div id="originalLabel" class="original-label">
-                    No scan performed yet
-                </div>
-            </section>
+        <div class="pane active" id="pane-history">
+          <ul class="history" id="historyList"></ul>
+          <div class="empty" id="historyEmpty"><svg><use href="#i-scan"/></svg><span>Scans appear here</span></div>
+          <button class="link-btn" id="btnClear">Clear history</button>
+        </div>
 
-            <section class="card status-card desktop-only">
-                <div class="section-label">SYSTEM STATUS</div>
+        <div class="pane" id="pane-serial">
+          <div class="serial-state" id="serialState">
+            <svg><use href="#i-plug"/></svg>
+            <div><b>Not connected</b><small>USB · 9600 baud · Chrome or Edge</small></div>
+          </div>
+          <ul class="log" id="serialLog"></ul>
+          <div class="test-row">
+            <button class="chip bio" id="testBio"  disabled><svg><use href="#i-leaf"/></svg>Test Bio</button>
+            <button class="chip non" id="testNon"  disabled><svg><use href="#i-bin"/></svg>Test Non-bio</button>
+          </div>
+        </div>
 
-                <div class="status-row">
-                    <span class="status-name">
-                        <span id="cameraDot" class="dot"></span>
-                        Camera
-                    </span>
-                    <strong id="cameraStatus">Starting...</strong>
-                </div>
+        <div class="pane" id="pane-guide">
+          <ol class="guide">
+            <li><b>Connect</b><span>Plug in the Arduino and press Connect.</span></li>
+            <li><b>Place</b><span>Hold an item within 20 cm of the sensor.</span></li>
+            <li><b>Sort</b><span>AI decides, the servo tilts, the LCD shows it.</span></li>
+          </ol>
+          <div class="legend">
+            <span class="lg bio"><i></i>Green LED · Biodegradable</span>
+            <span class="lg non"><i></i>Red LED · Non-biodegradable</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </main>
 
-                <div class="status-row">
-                    <span class="status-name">
-                        <span id="arduinoDot" class="dot"></span>
-                        Arduino
-                    </span>
-                    <strong id="arduinoStatus">Connecting...</strong>
-                </div>
-
-                <div class="status-row">
-                    <span class="status-name">
-                        <span id="modelDot" class="dot"></span>
-                        AI Model
-                    </span>
-                    <strong id="modelStatus">Checking...</strong>
-                </div>
-
-                <div class="status-row">
-                    <span class="status-name">
-                        <span id="objectDot" class="dot"></span>
-                        Object Sensor
-                    </span>
-                    <strong id="objectStatus">Waiting for object</strong>
-                </div>
-
-            </section>
-
-            <button id="scanButton" class="scan-button">
-                <span>⌕</span>
-                SCAN NOW
-            </button>
-
-            <button id="resetButton" class="reset-button">
-                Reset Result
-            </button>
-
-        </aside>
-
-    </main>
-
-    <footer>
-        <span id="footerMessage">
-            Ready • Place an item in front of the camera
-        </span>
-        <span>CBSE Class 12 AI Project • EcoVision</span>
-    </footer>
-
+  <!-- MOBILE QUICK-NAV (shown only on small screens) -->
+  <footer class="foot">
+    <span id="footMsg">Ready · Place an item in front of the camera</span>
+    <span class="foot-r">EcoVision · CBSE Class 12 AI Project</span>
+  </footer>
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>

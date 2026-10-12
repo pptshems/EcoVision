@@ -1,506 +1,468 @@
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const isMobile = window.matchMedia("(max-width: 700px)").matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+/* =========================================================
+   EcoVision · browser logic
+   Web Serial (Arduino) + camera + Flask /api/predict
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
 
-const scanButton = document.getElementById("scanButton");
-const resetButton = document.getElementById("resetButton");
-const arduinoButton = document.getElementById("arduinoButton");
-const portText = document.getElementById("portText");
+const isMobile = window.matchMedia("(max-width: 820px)").matches ||
+                 /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const app = $("app");
+if (isMobile) app.classList.add("mobile");
 
-const scanOverlay = document.getElementById("scanOverlay");
-const scanCountdown = document.getElementById("scanCountdown");
-const cameraMessage = document.getElementById("cameraMessage");
-const cameraBadge = document.getElementById("cameraBadge");
+/* ---------- elements ---------- */
+const video = $("video"), canvas = $("canvas");
+const btnScan = $("btnScan"), btnReset = $("btnReset"), btnFlip = $("btnFlip");
+const btnArduino = $("btnArduino"), btnArduinoText = $("btnArduinoText");
+const btnAuto = $("btnAuto"), btnSound = $("btnSound"), btnFull = $("btnFull");
+const camMsg = $("camMsg"), liveBox = document.querySelector(".live"), liveText = $("liveText");
+const scanSub = $("scanSub");
+const resIcon = $("resIcon"), resLabel = $("resLabel"), resSub = $("resSub"), resKicker = $("resKicker");
+const confArc = $("confArc"), confNum = $("confNum"), resTip = $("resTip");
+const toastIco = $("toastIco"), toastTitle = $("toastTitle"), toastSub = $("toastSub");
+const distText = $("distText"), gaugeVal = $("gaugeVal"), gaugeFill = $("gaugeFill");
+const footMsg = $("footMsg");
+const serialState = $("serialState"), serialLog = $("serialLog");
+const testBio = $("testBio"), testNon = $("testNon");
+const historyList = $("historyList"), historyEmpty = $("historyEmpty");
 
-const resultIcon = document.getElementById("resultIcon");
-const resultLabel = document.getElementById("resultLabel");
-const resultConfidence = document.getElementById("resultConfidence");
-const progressBar = document.getElementById("progressBar");
-const originalLabel = document.getElementById("originalLabel");
+const DETECT_CM = 20;      // must match DETECT_DISTANCE in the Arduino sketch
+const GAUGE_MAX_CM = 40;
+const ICON = (id) => `<svg><use href="#${id}"/></svg>`;
 
-const connectionDot = document.getElementById("connectionDot");
-const connectionText = document.getElementById("connectionText");
-const cameraDot = document.getElementById("cameraDot");
-const cameraStatus = document.getElementById("cameraStatus");
-const arduinoDot = document.getElementById("arduinoDot");
-const arduinoStatus = document.getElementById("arduinoStatus");
-const modelDot = document.getElementById("modelDot");
-const modelStatus = document.getElementById("modelStatus");
-const objectDot = document.getElementById("objectDot");
-const objectStatus = document.getElementById("objectStatus");
-const footerMessage = document.getElementById("footerMessage");
+/* ---------- state ---------- */
+let cameraStream = null, cameraDevices = [], cameraIndex = 0, facing = "environment";
+let scanning = false, objectPresent = false, awaitingRemoval = false;
+let serialPort = null, serialReader = null, serialKeepReading = false, serialBuffer = "";
+let autoOn = true, soundOn = true, idleTimer = null;
+let stats = { total: 0, bio: 0, non: 0 };
+let history = [];
 
-let cameraStream = null;
-let scanning = false;
-let objectPresent = false;
-let awaitingRemoval = false;
-let serialPort = null;
-let serialReader = null;
-let serialKeepReading = false;
-let serialBuffer = "";
-let autoScanEnabled = false;
-let classifiedStatusTimer = null;
+/* ---------- small helpers ---------- */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const webSerialSupported = () => "serial" in navigator;
+const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-function setDot(dot, state) {
-    if (!dot) return;
-    dot.className = "dot";
-    if (state === "online") dot.classList.add("online");
-    else if (state === "warning") dot.classList.add("warning");
-    else dot.classList.add("offline");
+function setDot(id, mode) {
+  const el = $(id); if (!el) return;
+  el.className = "dot" + (mode ? " " + mode : "");
+}
+function say(msg) { footMsg.textContent = msg; }
+function setState(s) { app.dataset.state = s; }
+
+/* ---------- persistence (guarded: storage can be blocked) ---------- */
+function load() {
+  try {
+    stats = JSON.parse(localStorage.getItem("ev_stats")) || stats;
+    history = JSON.parse(localStorage.getItem("ev_history")) || [];
+  } catch (e) { /* ignore */ }
+}
+function save() {
+  try {
+    localStorage.setItem("ev_stats", JSON.stringify(stats));
+    localStorage.setItem("ev_history", JSON.stringify(history.slice(0, 12)));
+  } catch (e) { /* ignore */ }
 }
 
-function webSerialSupported() {
-    return "serial" in navigator;
+/* ---------- sound ---------- */
+let audioCtx = null;
+function beep(freqs, dur = 0.12) {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    let t = audioCtx.currentTime;
+    freqs.forEach((f) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.14, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+      t += dur * 0.85;
+    });
+  } catch (e) { /* ignore */ }
 }
+const SND = {
+  detect: () => beep([660]),
+  bio: () => beep([523, 659, 784]),
+  non: () => beep([392, 294]),
+  error: () => beep([220, 196], 0.18),
+};
 
-function updateArduinoUI(connected, message = "") {
-    if (isMobile) return;
+/* ---------- eco tips ---------- */
+const TIPS = {
+  BIODEGRADABLE: [
+    "Compost it: food scraps and leaves become rich soil in weeks.",
+    "Keep biodegradable waste separate and dry waste stays recyclable.",
+    "Home composting can cut household waste by up to a third.",
+  ],
+  "NON-BIODEGRADABLE": [
+    "Rinse and recycle plastics, metals and glass where possible.",
+    "Plastic can take hundreds of years to break down. Reuse first.",
+    "Never burn plastic. Send it to a proper recycling point.",
+  ],
+};
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
-    if (connected) {
-        const info = serialPort?.getInfo ? serialPort.getInfo() : {};
-        const usbText = info.usbVendorId ? "USB Arduino" : "Serial device";
-        connectionText.textContent = "Arduino Connected";
-        setDot(connectionDot, "online");
-        arduinoStatus.textContent = "Connected";
-        setDot(arduinoDot, "online");
-        arduinoButton.textContent = "Disconnect Arduino";
-        portText.textContent = `${usbText} • 9600 baud`;
-    } else {
-        connectionText.textContent = "Arduino Not Connected";
-        setDot(connectionDot, "offline");
-        arduinoStatus.textContent = webSerialSupported() ? "Disconnected" : "Unsupported";
-        setDot(arduinoDot, "offline");
-        arduinoButton.textContent = "Connect Arduino";
-        portText.textContent = webSerialSupported()
-            ? "Click Connect to choose USB Arduino"
-            : "Use Chrome or Edge on a PC";
-    }
+/* ---------- camera ---------- */
+async function startCamera(deviceId = null) {
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera API unavailable. Open EcoVision over HTTPS.");
+    if (cameraStream) cameraStream.getTracks().forEach((t) => t.stop());
 
-    if (message) footerMessage.textContent = message;
-}
-
-async function startCamera() {
+    const base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    const video_c = deviceId ? { ...base, deviceId: { exact: deviceId } }
+                             : { ...base, facingMode: { ideal: facing } };
     try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error("Camera API is unavailable. Open EcoVision using HTTPS.");
-        }
-
-        const constraints = isMobile
-            ? { video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }
-            : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: "environment" } }, audio: false };
-
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (firstError) {
-            if (isMobile) cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            else throw firstError;
-        }
-
-        video.srcObject = cameraStream;
-        cameraMessage.classList.add("hidden");
-        cameraBadge.textContent = isMobile ? "PHONE CAMERA" : "READY";
-        if (cameraStatus) cameraStatus.textContent = "Ready";
-        setDot(cameraDot, "online");
-    } catch (error) {
-        console.error(error);
-        cameraMessage.classList.remove("hidden");
-        cameraMessage.innerHTML = `<div class="camera-icon">⚠</div><div>Camera access denied or unavailable</div>`;
-        cameraBadge.textContent = "ERROR";
-        if (cameraStatus) cameraStatus.textContent = "Error";
-        setDot(cameraDot, "offline");
-        footerMessage.textContent = "Camera unavailable • Please allow camera permission";
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: video_c, audio: false });
+    } catch (e) {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
+    video.srcObject = cameraStream;
+    try { cameraDevices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput"); } catch (e) {}
+
+    camMsg.classList.add("hidden");
+    liveBox.classList.add("ready"); liveBox.classList.remove("off"); liveText.textContent = "LIVE";
+    $("txtCam").textContent = "Ready"; setDot("dotCam", "on");
+  } catch (err) {
+    console.error(err);
+    camMsg.classList.remove("hidden");
+    camMsg.innerHTML = `${ICON("i-cam")}<p>Camera unavailable</p><small>Allow camera permission, then press Flip to retry</small>`;
+    liveBox.classList.add("off"); liveBox.classList.remove("ready"); liveText.textContent = "OFFLINE";
+    $("txtCam").textContent = "Error"; setDot("dotCam", "off");
+    say("Camera unavailable. Please allow camera permission.");
+  }
+}
+async function flipCamera() {
+  if (cameraDevices.length > 1) {
+    cameraIndex = (cameraIndex + 1) % cameraDevices.length;
+    await startCamera(cameraDevices[cameraIndex].deviceId);
+  } else {
+    facing = facing === "environment" ? "user" : "environment";
+    await startCamera();
+  }
 }
 
+/* ---------- AI status ---------- */
 async function checkStatus() {
-    try {
-        const response = await fetch("/api/status", { cache: "no-store" });
-        const data = await response.json();
-        if (data.model_ready) {
-            if (modelStatus) modelStatus.textContent = "Ready";
-            setDot(modelDot, "online");
-        } else {
-            if (modelStatus) modelStatus.textContent = "Error";
-            setDot(modelDot, "offline");
-        }
-        if (!isMobile) updateArduinoUI(Boolean(serialPort), "");
-    } catch (error) {
-        console.error(error);
-        if (!isMobile) {
-            if (modelStatus) modelStatus.textContent = "Offline";
-            setDot(modelDot, "offline");
-            connectionText.textContent = "Server Offline";
-            setDot(connectionDot, "offline");
-        }
-    }
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" });
+    const d = await r.json();
+    $("txtAi").textContent = d.model_ready ? "Ready" : "Error";
+    setDot("dotAi", d.model_ready ? "on" : "off");
+  } catch (e) {
+    $("txtAi").textContent = "Offline"; setDot("dotAi", "off");
+  }
 }
 
+/* ---------- Arduino UI ---------- */
+function logLine(text, cls = "") {
+  const li = document.createElement("li");
+  li.textContent = `${now()}  ${text}`;
+  if (cls) li.className = cls;
+  serialLog.appendChild(li);
+  while (serialLog.children.length > 8) serialLog.firstChild.remove();
+}
+
+function arduinoUI(connected, message = "") {
+  if (isMobile) return;
+  $("txtArd").textContent = connected ? "Connected" : (webSerialSupported() ? "Offline" : "Unsupported");
+  setDot("dotArd", connected ? "on" : "off");
+  btnArduinoText.textContent = connected ? "Disconnect" : "Connect Arduino";
+  btnArduino.classList.toggle("connected", connected);
+  serialState.classList.toggle("on", connected);
+  serialState.innerHTML = connected
+    ? `${ICON("i-plug")}<div><b>Arduino connected</b><small>Listening to the ultrasonic sensor</small></div>`
+    : `${ICON("i-plug")}<div><b>${webSerialSupported() ? "Not connected" : "Browser not supported"}</b><small>${webSerialSupported() ? "USB · 9600 baud · Chrome or Edge" : "Use Chrome or Edge on a computer"}</small></div>`;
+  testBio.disabled = testNon.disabled = !connected;
+  if (!connected) {
+    setDot("dotObj", ""); $("txtObj").textContent = "Idle";
+    distText.textContent = "-- cm"; gaugeVal.textContent = "--"; gaugeFill.style.width = "0";
+  } else {
+    setDot("dotObj", "on"); $("txtObj").textContent = "Waiting";
+  }
+  if (message) say(message);
+}
+
+/* ---------- Web Serial ---------- */
 async function connectArduino() {
-    if (!webSerialSupported()) {
-        footerMessage.textContent = "Arduino connection requires Chrome or Edge on a computer.";
-        return;
-    }
-
-    try {
-        arduinoButton.disabled = true;
-        arduinoButton.textContent = "Select Arduino...";
-        footerMessage.textContent = "Choose your Arduino USB/serial device in the browser dialog.";
-
-        // requestPort MUST happen after a user click. The browser does not
-        // allow a website to silently access arbitrary USB serial devices.
-        serialPort = await navigator.serial.requestPort();
-        await serialPort.open({ baudRate: 9600 });
-        autoScanEnabled = true;
-        updateArduinoUI(true, "Arduino connected • HC-SR04 monitoring is active");
-        await startSerialReader();
-    } catch (error) {
-        console.error("Arduino connection error:", error);
-        serialPort = null;
-        autoScanEnabled = false;
-        updateArduinoUI(false, error.name === "NotFoundError"
-            ? "Arduino selection cancelled."
-            : `Arduino connection failed: ${error.message}`);
-    } finally {
-        arduinoButton.disabled = false;
-    }
+  if (!webSerialSupported()) { say("Arduino needs Chrome or Edge on a computer."); return; }
+  try {
+    btnArduino.disabled = true; btnArduinoText.textContent = "Choose device…";
+    say("Pick your Arduino in the browser dialog.");
+    serialPort = await navigator.serial.requestPort();   // must follow a user click
+    await serialPort.open({ baudRate: 9600 });
+    arduinoUI(true, "Arduino connected. Sensor is watching for objects.");
+    logLine("Port opened · 9600 baud", "ev");
+    startSerialReader();
+  } catch (err) {
+    console.error(err);
+    serialPort = null;
+    arduinoUI(false, err.name === "NotFoundError" ? "No device selected." : `Connection failed: ${err.message}`);
+  } finally { btnArduino.disabled = false; }
 }
 
 async function disconnectArduino() {
-    autoScanEnabled = false;
-    serialKeepReading = false;
-
-    try {
-        if (serialReader) {
-            await serialReader.cancel();
-        }
-    } catch (error) {
-        console.debug("Serial reader cancel:", error);
-    }
-
-    try {
-        if (serialPort && serialPort.readable) {
-            // The reader loop releases the lock after cancellation.
-        }
-    } catch (error) {
-        console.debug(error);
-    }
-
-    try {
-        if (serialPort) await serialPort.close();
-    } catch (error) {
-        console.debug("Serial close:", error);
-    }
-
-    serialReader = null;
-    serialPort = null;
-    serialBuffer = "";
-    objectPresent = false;
-    awaitingRemoval = false;
-    updateArduinoUI(false, "Arduino disconnected.");
-    if (objectStatus) objectStatus.textContent = "Waiting for object";
-    setDot(objectDot, "online");
+  serialKeepReading = false;
+  try { await serialReader?.cancel(); } catch (e) {}
+  try { await serialPort?.close(); } catch (e) {}
+  serialReader = null; serialPort = null; serialBuffer = "";
+  objectPresent = false; awaitingRemoval = false;
+  logLine("Port closed", "ev");
+  arduinoUI(false, "Arduino disconnected.");
 }
 
 async function startSerialReader() {
-    if (!serialPort || !serialPort.readable || serialKeepReading) return;
-
-    serialKeepReading = true;
-    serialBuffer = "";
-
-    try {
-        serialReader = serialPort.readable.getReader();
-
-        while (serialKeepReading) {
-            const { value, done } = await serialReader.read();
-            if (done) break;
-            if (!value) continue;
-
-            serialBuffer += new TextDecoder().decode(value, { stream: true });
-            const lines = serialBuffer.split(/\r?\n/);
-            serialBuffer = lines.pop() || "";
-
-            for (const line of lines) {
-                handleArduinoMessage(line.trim());
-            }
-        }
-    } catch (error) {
-        if (serialKeepReading) {
-            console.error("Serial reader stopped:", error);
-            updateArduinoUI(false, "Arduino was disconnected or the serial connection stopped.");
-            serialPort = null;
-            autoScanEnabled = false;
-        }
-    } finally {
-        serialKeepReading = false;
-        try { serialReader?.releaseLock(); } catch (error) { console.debug(error); }
-        serialReader = null;
+  if (!serialPort?.readable || serialKeepReading) return;
+  serialKeepReading = true; serialBuffer = "";
+  const decoder = new TextDecoder();
+  try {
+    serialReader = serialPort.readable.getReader();
+    while (serialKeepReading) {
+      const { value, done } = await serialReader.read();
+      if (done) break;
+      if (!value) continue;
+      serialBuffer += decoder.decode(value, { stream: true });
+      const lines = serialBuffer.split(/\r?\n/);
+      serialBuffer = lines.pop() || "";
+      lines.forEach((l) => onArduino(l.trim()));
     }
+  } catch (err) {
+    if (serialKeepReading) {
+      console.error(err);
+      serialPort = null;
+      arduinoUI(false, "Arduino connection stopped. Reconnect to continue.");
+    }
+  } finally {
+    serialKeepReading = false;
+    try { serialReader?.releaseLock(); } catch (e) {}
+    serialReader = null;
+  }
 }
 
-function handleArduinoMessage(message) {
-    if (!message) return;
+function onArduino(msg) {
+  if (!msg) return;
 
-    if (message === "ECOVISION_READY") {
-        updateArduinoUI(true, "Arduino ready • Place an object near the HC-SR04");
-        return;
-    }
+  if (msg.startsWith("DISTANCE:")) {
+    const d = parseFloat(msg.split(":")[1]);
+    if (Number.isFinite(d)) updateDistance(d);
+    return;                                   // too chatty to log
+  }
+  logLine(msg, msg.endsWith("ACCEPTED") ? "tx" : "ev");
 
-    if (message.startsWith("DISTANCE:")) {
-        const distance = Number.parseFloat(message.split(":")[1]);
-        if (Number.isFinite(distance) && distance <= 20) {
-            objectPresent = true;
-        }
-        return;
-    }
+  if (msg === "ECOVISION_READY") { arduinoUI(true, "Arduino ready. Place an object near the sensor."); return; }
 
-    if (message === "OBJECT_DETECTED" || message === "TRIGGER_SCAN") {
-        objectPresent = true;
-        if (objectStatus) objectStatus.textContent = "Object detected";
-        setDot(objectDot, "warning");
-
-        if (autoScanEnabled && !scanning && !awaitingRemoval) {
-            footerMessage.textContent = "Object detected • Starting automatic scan...";
-            autoScan();
-        }
-        return;
-    }
-
-    if (message === "OBJECT_REMOVED") {
-        objectPresent = false;
-        awaitingRemoval = false;
-        if (objectStatus) objectStatus.textContent = "Waiting for object";
-        setDot(objectDot, "online");
-        footerMessage.textContent = "Ready • Place an item in front of the sensor";
-        return;
-    }
+  if (msg === "OBJECT_DETECTED" || msg === "TRIGGER_SCAN") {
+    objectPresent = true;
+    $("txtObj").textContent = "Object found"; setDot("dotObj", "warn");
+    SND.detect();
+    if (autoOn && !scanning && !awaitingRemoval) { say("Object detected. Scanning automatically…"); performScan(true); }
+    else if (!autoOn) say("Object detected. Auto-scan is off, press Scan now.");
+    return;
+  }
+  if (msg === "OBJECT_REMOVED") {
+    objectPresent = false; awaitingRemoval = false;
+    $("txtObj").textContent = "Waiting"; setDot("dotObj", "on");
+    say("Ready. Place an item in front of the sensor.");
+  }
 }
 
-async function sendArduinoCommand(command) {
-    if (!serialPort || !serialPort.writable) {
-        return false;
-    }
-
-    const writer = serialPort.writable.getWriter();
-    try {
-        await writer.write(new TextEncoder().encode(`${command}\n`));
-        return true;
-    } catch (error) {
-        console.error("Arduino write failed:", error);
-        updateArduinoUI(false, "Could not send the result to the Arduino.");
-        return false;
-    } finally {
-        writer.releaseLock();
-    }
+function updateDistance(d) {
+  const hit = d <= DETECT_CM;
+  distText.textContent = `${d.toFixed(1)} cm`;
+  gaugeVal.textContent = `${d.toFixed(1)} cm`;
+  gaugeFill.style.width = `${Math.max(2, Math.min(100, (1 - d / GAUGE_MAX_CM) * 100))}%`;
+  gaugeFill.classList.toggle("hit", hit);
 }
 
-function showScanningAnimation() {
-    scanOverlay.classList.remove("hidden");
-    scanCountdown.textContent = "Analyzing object...";
-    let seconds = 2;
-
-    const timer = setInterval(() => {
-        if (!scanning) {
-            clearInterval(timer);
-            return;
-        }
-        if (seconds > 0) {
-            scanCountdown.textContent = `Analyzing object... ${seconds}`;
-            seconds--;
-        } else {
-            scanCountdown.textContent = "Finalizing AI result...";
-        }
-    }, 700);
-
-    return timer;
+async function sendArduino(cmd) {
+  if (!serialPort?.writable) return false;
+  const w = serialPort.writable.getWriter();
+  try {
+    await w.write(new TextEncoder().encode(cmd + "\n"));
+    logLine(`> ${cmd}`, "tx");
+    return true;
+  } catch (e) {
+    console.error(e); arduinoUI(false, "Could not send the result to the Arduino."); return false;
+  } finally { w.releaseLock(); }
 }
 
-function hideScanningAnimation() {
-    scanOverlay.classList.add("hidden");
-}
-
+/* ---------- capture + scan ---------- */
 function captureFrame() {
-    if (!video.videoWidth || !video.videoHeight) {
-        throw new Error("Camera is not ready.");
-    }
-
-    canvas.width = 224;
-    canvas.height = 224;
-    const context = canvas.getContext("2d");
-    const sourceWidth = video.videoWidth;
-    const sourceHeight = video.videoHeight;
-    const size = Math.min(sourceWidth, sourceHeight);
-    const sourceX = (sourceWidth - size) / 2;
-    const sourceY = (sourceHeight - size) / 2;
-    context.drawImage(video, sourceX, sourceY, size, size, 0, 0, 224, 224);
-
-    return new Promise((resolve) => {
-        canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.92);
-    });
+  if (!video.videoWidth) throw new Error("Camera is not ready.");
+  canvas.width = 224; canvas.height = 224;
+  const ctx = canvas.getContext("2d");
+  const s = Math.min(video.videoWidth, video.videoHeight);
+  ctx.drawImage(video, (video.videoWidth - s) / 2, (video.videoHeight - s) / 2, s, s, 0, 0, 224, 224);
+  return new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.92));
+}
+function thumbnail() {
+  const t = document.createElement("canvas"); t.width = t.height = 56;
+  t.getContext("2d").drawImage(canvas, 0, 0, 56, 56);
+  return t.toDataURL("image/jpeg", 0.6);
 }
 
-async function autoScan() {
-    await performScan(true);
+async function performScan(auto = false) {
+  if (scanning) return;
+  if (!cameraStream || video.readyState < 2) { say("Camera is not ready yet."); return; }
+
+  scanning = true; clearTimeout(idleTimer);
+  btnScan.disabled = true; btnScan.querySelector("span").textContent = "Scanning…";
+  setState("scan");
+  resIcon.innerHTML = ICON("i-scan"); resKicker.textContent = auto ? "Auto scan" : "Manual scan";
+  resLabel.textContent = "Analyzing…"; resSub.textContent = "Hold the item steady";
+  confNum.textContent = "--"; confArc.style.strokeDashoffset = 113.1;
+  scanSub.textContent = "Hold the item steady";
+  $("txtObj").textContent = "Scanning"; setDot("dotObj", "warn");
+
+  try {
+    await sleep(1500);                      // let the item settle
+    scanSub.textContent = "Asking the AI model…";
+    const blob = await captureFrame();
+    const thumb = thumbnail();
+    const fd = new FormData(); fd.append("image", blob, "camera.jpg");
+
+    const r = await fetch("/api/predict", { method: "POST", body: fd });
+    const data = await r.json();
+    await sleep(400);
+    if (!r.ok || !data.success) throw new Error(data.error || "Prediction failed.");
+
+    showResult(data, thumb);
+
+    let sent = false;
+    if (serialPort) sent = await sendArduino(data.arduino_command);
+    awaitingRemoval = Boolean(serialPort);
+
+    $("txtObj").textContent = "Classified"; setDot("dotObj", "warn");
+    say(sent ? "Sorted. Remove the object when ready."
+             : (!isMobile && !serialPort ? "Classified. Connect an Arduino to run the sorter." : "Classification complete."));
+
+    idleTimer = setTimeout(() => {
+      if (scanning) return;
+      $("txtObj").textContent = serialPort ? "Waiting" : "Idle";
+      setDot("dotObj", serialPort ? "on" : "");
+      if (serialPort && objectPresent) say("Object still in range. Remove it before the next scan.");
+    }, 2500);
+  } catch (err) {
+    console.error(err);
+    setState("error"); SND.error();
+    resIcon.innerHTML = ICON("i-scan"); resKicker.textContent = "Something went wrong";
+    resLabel.textContent = "Scan failed"; resSub.textContent = err.message;
+    confNum.textContent = "--"; confArc.style.strokeDashoffset = 113.1;
+    $("txtObj").textContent = "Error"; setDot("dotObj", "off");
+    say("Scan error: " + err.message);
+  } finally {
+    scanning = false;
+    btnScan.disabled = false; btnScan.querySelector("span").textContent = "Scan now";
+  }
 }
 
-async function performScan(automatic = false) {
-    if (scanning) return;
+function showResult(d, thumb) {
+  const bio = d.result === "BIODEGRADABLE";
+  setState(bio ? "bio" : "non");
+  (bio ? SND.bio : SND.non)();
 
-    if (!cameraStream || video.readyState < 2) {
-        footerMessage.textContent = "Camera is not ready yet.";
-        return;
-    }
+  const label = bio ? "Biodegradable" : "Non-biodegradable";
+  const icon = ICON(bio ? "i-leaf" : "i-bin");
+  resIcon.innerHTML = icon; toastIco.innerHTML = icon;
+  resKicker.textContent = "Result";
+  resLabel.textContent = label; toastTitle.textContent = label;
+  resSub.textContent = `AI label: ${d.original_label}`;
+  const c = Number(d.confidence);
+  toastSub.textContent = `${c.toFixed(1)}% confidence`;
+  confNum.textContent = `${Math.round(c)}%`;
+  confArc.style.strokeDashoffset = 113.1 * (1 - c / 100);
+  resTip.innerHTML = `${ICON(bio ? "i-leaf" : "i-bin")}<span>${pick(TIPS[d.result])}</span>`;
 
-    scanning = true;
-    scanButton.disabled = true;
-    scanButton.innerHTML = "<span>⌛</span> SCANNING...";
-    resultLabel.textContent = "SCANNING...";
-    resultLabel.style.color = "#f59e0b";
-    resultIcon.textContent = "🔎";
-    resultConfidence.textContent = "Analyzing image...";
-    progressBar.style.width = "0%";
-    if (objectStatus) objectStatus.textContent = automatic ? "Auto scanning" : "Scanning";
-    setDot(objectDot, "warning");
-    footerMessage.textContent = automatic ? "Object detected • AI scanning automatically..." : "AI scanning in progress...";
-
-    const animationTimer = showScanningAnimation();
-
-    try {
-        await sleep(1800);
-        const imageBlob = await captureFrame();
-        const formData = new FormData();
-        formData.append("image", imageBlob, "camera.jpg");
-
-        const response = await fetch("/api/predict", { method: "POST", body: formData });
-        const data = await response.json();
-        await sleep(700);
-        clearInterval(animationTimer);
-
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || "Prediction failed.");
-        }
-
-        showResult(data);
-
-        // Arduino is controlled locally by the visitor's browser.
-        let sent = false;
-        if (serialPort) {
-            sent = await sendArduinoCommand(data.arduino_command);
-        }
-
-        awaitingRemoval = Boolean(serialPort);
-        // Show a short, clear yellow "Object Classified" state instead of
-        // exposing the internal Arduino communication result.
-        if (classifiedStatusTimer) clearTimeout(classifiedStatusTimer);
-        if (objectStatus) objectStatus.textContent = "Object Classified";
-        setDot(objectDot, "warning");
-
-        if (sent) {
-            footerMessage.textContent = "Classification complete • Remove the object when ready";
-        } else if (!isMobile && !serialPort) {
-            footerMessage.textContent = "Classification complete • Connect an Arduino to use the sorter";
-        } else {
-            footerMessage.textContent = "Classification complete";
-        }
-
-        // After the result has been displayed, return the status to its idle
-        // state. The Arduino's OBJECT_REMOVED message will also restore this
-        // state immediately when the object is actually removed.
-        classifiedStatusTimer = setTimeout(() => {
-            if (!scanning) {
-                if (objectStatus) objectStatus.textContent = "Waiting for object";
-                setDot(objectDot, "online");
-                if (objectPresent) {
-                    footerMessage.textContent = "Object remains detected • Remove it before the next automatic scan";
-                } else {
-                    footerMessage.textContent = "Ready • Place an item in front of the sensor";
-                }
-            }
-        }, 2500);
-    } catch (error) {
-        clearInterval(animationTimer);
-        console.error(error);
-        resultIcon.textContent = "⚠";
-        resultLabel.textContent = "SCAN ERROR";
-        resultLabel.style.color = "#ef4444";
-        resultConfidence.textContent = "Please try again";
-        progressBar.style.width = "0%";
-        if (objectStatus) objectStatus.textContent = "Error";
-        setDot(objectDot, "offline");
-        footerMessage.textContent = "Scan error: " + error.message;
-    } finally {
-        scanning = false;
-        hideScanningAnimation();
-        scanButton.disabled = false;
-        scanButton.innerHTML = "<span>⌕</span> SCAN NOW";
-    }
+  stats.total++; bio ? stats.bio++ : stats.non++;
+  history.unshift({ bio, label, c, t: now(), img: thumb });
+  history = history.slice(0, 12);
+  save(); renderStats(); renderHistory();
 }
 
-function showResult(data) {
-    const isBio = data.result === "BIODEGRADABLE";
-    resultIcon.textContent = data.icon;
-    resultLabel.textContent = data.result;
-    resultLabel.style.color = isBio ? "#22c55e" : "#ef4444";
-    resultConfidence.textContent = `Confidence: ${Number(data.confidence).toFixed(1)}%`;
-    progressBar.style.width = `${data.confidence}%`;
-    progressBar.style.background = isBio ? "#22c55e" : "#ef4444";
-    originalLabel.textContent = `AI label: ${data.original_label}`;
+/* ---------- renderers ---------- */
+function renderStats() {
+  $("stTotal").textContent = stats.total; $("stBio").textContent = stats.bio; $("stNon").textContent = stats.non;
+  const t = stats.total || 1;
+  $("splitBio").style.width = stats.total ? `${(stats.bio / t) * 100}%` : "50%";
+  $("splitNon").style.width = stats.total ? `${(stats.non / t) * 100}%` : "50%";
+}
+function renderHistory() {
+  historyList.innerHTML = "";
+  historyEmpty.classList.toggle("hidden", history.length > 0);
+  history.slice(0, 6).forEach((h) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<img alt="" src="${h.img || ""}">
+      <div class="h-main"><b>${h.label}</b><small>${h.t} · ${Number(h.c).toFixed(0)}% sure</small></div>
+      <span class="h-tag ${h.bio ? "bio" : "non"}">${h.bio ? "BIO" : "NON-BIO"}</span>`;
+    historyList.appendChild(li);
+  });
 }
 
-scanButton.addEventListener("click", () => performScan(false));
+function resetResult() {
+  clearTimeout(idleTimer);
+  setState("idle");
+  resIcon.innerHTML = ICON("i-scan"); resKicker.textContent = "Classification";
+  resLabel.textContent = "Ready to scan"; resSub.textContent = "Place an item in front of the camera.";
+  confNum.textContent = "--"; confArc.style.strokeDashoffset = 113.1;
+  $("txtObj").textContent = serialPort ? "Waiting" : "Idle"; setDot("dotObj", serialPort ? "on" : "");
+  say(objectPresent ? "Object still in range. Remove it before the next scan." : "Ready. Place an item in front of the camera.");
+}
 
-resetButton.addEventListener("click", () => {
-    if (classifiedStatusTimer) clearTimeout(classifiedStatusTimer);
-    if (objectStatus) objectStatus.textContent = objectPresent ? "Object detected" : "Waiting for object";
-    setDot(objectDot, objectPresent ? "warning" : "online");
-    resultIcon.textContent = "♻";
-    resultLabel.textContent = "WAITING";
-    resultLabel.style.color = "#f1f5f9";
-    resultConfidence.textContent = "Confidence: --";
-    progressBar.style.width = "0%";
-    progressBar.style.background = "#22c55e";
-    originalLabel.textContent = "No scan performed yet";
-    footerMessage.textContent = objectPresent
-        ? "Object is still present • Remove it before the next automatic scan"
-        : "Ready • Point the camera at a waste item";
+/* ---------- events ---------- */
+btnScan.addEventListener("click", () => performScan(false));
+btnReset.addEventListener("click", resetResult);
+btnFlip.addEventListener("click", flipCamera);
+btnArduino.addEventListener("click", () => (serialPort ? disconnectArduino() : connectArduino()));
+testBio.addEventListener("click", () => sendArduino("BIO"));
+testNon.addEventListener("click", () => sendArduino("NON_BIO"));
+
+btnAuto.addEventListener("click", () => {
+  autoOn = !autoOn;
+  btnAuto.classList.toggle("on", autoOn); btnAuto.setAttribute("aria-pressed", autoOn);
+  say(autoOn ? "Auto-scan on. The sensor will trigger scans." : "Auto-scan off. Use Scan now.");
+});
+btnSound.addEventListener("click", () => {
+  soundOn = !soundOn;
+  btnSound.classList.toggle("on", soundOn); btnSound.setAttribute("aria-pressed", soundOn);
+  if (soundOn) SND.detect();
+});
+btnFull.addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen?.();
+});
+$("btnClear").addEventListener("click", () => {
+  history = []; stats = { total: 0, bio: 0, non: 0 }; save(); renderStats(); renderHistory();
 });
 
-arduinoButton.addEventListener("click", async () => {
-    if (serialPort) await disconnectArduino();
-    else await connectArduino();
+document.querySelectorAll(".tab").forEach((tab) =>
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+    document.querySelectorAll(".pane").forEach((p) => p.classList.toggle("active", p.id === "pane-" + tab.dataset.tab));
+  })
+);
+
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !e.repeat && !["BUTTON", "INPUT"].includes(document.activeElement.tagName)) {
+    e.preventDefault(); performScan(false);
+  }
 });
 
-// Handle an Arduino being physically unplugged.
-if ("serial" in navigator) {
-    navigator.serial.addEventListener("disconnect", event => {
-        if (serialPort === event.target) {
-            serialKeepReading = false;
-            serialPort = null;
-            autoScanEnabled = false;
-            updateArduinoUI(false, "Arduino disconnected.");
-        }
-    });
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function initialize() {
-    startCamera();
-
-    if (isMobile) {
-        footerMessage.textContent = "Ready • Point the camera at a waste item";
-        return;
+if (webSerialSupported()) {
+  navigator.serial.addEventListener("disconnect", (e) => {
+    if (serialPort === e.target) {
+      serialKeepReading = false; serialPort = null;
+      arduinoUI(false, "Arduino unplugged.");
     }
-
-    if (!webSerialSupported()) {
-        updateArduinoUI(false, "Use Google Chrome or Microsoft Edge to connect an Arduino.");
-    } else {
-        updateArduinoUI(false, "Connect your Arduino using the button above.");
-    }
-
-    await checkStatus();
-    setInterval(checkStatus, 10000);
+  });
 }
 
-initialize();
+/* ---------- init ---------- */
+(async function init() {
+  load(); renderStats(); renderHistory();
+  startCamera();
+  if (isMobile) { say("Ready. Point the camera at a waste item."); }
+  else { arduinoUI(false, webSerialSupported() ? "Connect your Arduino to enable automatic scanning." : "Use Chrome or Edge to connect an Arduino."); }
+  await checkStatus();
+  setInterval(checkStatus, 15000);
+})();
