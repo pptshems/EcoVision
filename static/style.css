@@ -180,18 +180,6 @@ ul,ol{list-style:none;padding:0}
 .cam-msg small{color:var(--muted)}
 .cam-msg.hidden{display:none}
 
-/* scan mode bar (Auto / Manual) */
-.modebar{flex:0 0 auto;display:flex;align-items:center;gap:10px;min-width:0}
-.seg{display:inline-flex;flex:none;padding:3px;border-radius:12px;background:#07202a;border:1px solid var(--line)}
-.seg-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--muted);transition:all .2s}
-.seg-btn svg{font-size:15px}
-.seg-btn:hover{color:var(--text)}
-.seg-btn.active{background:var(--surface2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--line)}
-.mode-status{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.mode-status span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.modebar .icon-btn{height:34px;flex:none}
-.icon-btn[hidden]{display:none}
-
 /* dock under camera */
 .dock{flex:0 0 auto;display:flex;align-items:center;gap:10px}
 .gauge{flex:1.3;min-width:0;padding:8px 14px 10px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line)}
@@ -324,8 +312,6 @@ ul,ol{list-style:none;padding:0}
   .toast{padding:8px 16px 8px 9px;gap:10px}
   .toast-ico{width:36px;height:36px;font-size:20px}
   .toast-txt strong{font-size:15px}
-  .modebar{gap:8px}
-  .seg-btn{padding:0 12px;height:34px}
   .dock .btn{height:48px}
   .dock .btn.ghost span{display:none}
   .dock .btn.ghost{width:48px;padding:0}

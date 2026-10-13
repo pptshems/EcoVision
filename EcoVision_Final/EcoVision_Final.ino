@@ -32,12 +32,6 @@ const int BIO_ANGLE = 35;
 const int NON_BIO_ANGLE = 145;
 
 bool objectPresent = false;
-
-// Scan mode, set by the EcoVision website (MODE_AUTO / MODE_MANUAL).
-// Auto   : the ultrasonic sensor starts the scan.
-// Manual : the sensor still reports OBJECT_DETECTED and distance, but the LCD
-//          waits for the person to press "Scan now" in the browser.
-bool autoMode = true;
 unsigned long lastDetectionTime = 0;
 const unsigned long detectionDelay = 2000;
 
@@ -133,7 +127,7 @@ void loop() {
         lcd.setCursor(0, 0);
         lcd.print("Object Detected");
         lcd.setCursor(0, 1);
-        lcd.print(autoMode ? "Scanning..." : "Press Scan now");
+        lcd.print("Scanning...");
 
         Serial.println("OBJECT_DETECTED");
 
@@ -180,25 +174,9 @@ void readEcoVisionCommand() {
     command.trim();
 
     // -------------------------------------------------
-    // SCAN MODE (sent by the website)
-    // -------------------------------------------------
-    if (command == "MODE_AUTO" || command == "MODE_MANUAL") {
-
-      autoMode = (command == "MODE_AUTO");
-
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(autoMode ? "Auto Scan" : "Manual Scan");
-      lcd.setCursor(0, 1);
-      lcd.print(autoMode ? "Place Object" : "Use Scan now");
-
-      Serial.println(autoMode ? "MODE_AUTO_ACCEPTED" : "MODE_MANUAL_ACCEPTED");
-    }
-
-    // -------------------------------------------------
     // BIODEGRADABLE
     // -------------------------------------------------
-    else if (command == "BIO") {
+    if (command == "BIO") {
 
       digitalWrite(GREEN_LED, HIGH);
       digitalWrite(RED_LED, LOW);
