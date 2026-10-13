@@ -232,7 +232,7 @@ ul,ol{list-style:none;padding:0}
 .pane{display:none;flex:1;min-height:0;flex-direction:column;gap:8px;padding-top:10px;overflow:hidden}
 .pane.active{display:flex}
 
-.history{display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden}
+.history{display:flex;flex-direction:column;gap:7px;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .history li{
   display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border-radius:12px;
   background:rgba(0,0,0,.2);border:1px solid transparent;animation:slidein .35s ease both;flex:none;
