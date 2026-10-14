@@ -195,3 +195,20 @@ ARDUINO SKETCH CHANGE
   Re-upload EcoVision_Final/EcoVision_Final.ino. It now understands MODE_AUTO and
   MODE_MANUAL from the website so the LCD matches the selected mode. The old sketch
   still works with the new website; only the LCD wording in Manual mode differs.
+
+
+UPDATE: SCROLLING PANELS, LCD FIT, MOBILE SOUND, CODE DOWNLOAD
+--------------------------------------------------------------
+- History, Arduino and Guide panels scroll, with a teal scrollbar that matches the theme.
+  History now keeps the last 30 scans (it showed only 6 before).
+- LCD (16x2): NON-BIODEGRADABLE is 17 characters, so it is shown over two rows:
+      RESULT: NON-
+      BIODEGRADABLE
+  The sketch no longer freezes while showing a result (no delay()), so the sensor keeps reporting.
+  Re-upload EcoVision_Final/EcoVision_Final.ino.
+- Mobile: tap the book icon (top right) to open History and Guide.
+- Mobile sound: beep, vibration (Android) and a spoken result ("Biodegradable" / "Non biodegradable").
+  Phones keep audio locked until the first touch, so tap anywhere once after opening the page.
+  On iPhone, turn the silent switch off. The screen is kept awake so camera auto-scan keeps running.
+- Arduino tab: "Download Arduino code" button (served from /download/arduino).
+  Upload limit for scans is 8 MB.

@@ -241,10 +241,10 @@ ul,ol{list-style:none;padding:0}
 .tab{flex:1;height:32px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--muted);transition:all .2s}
 .tab:hover{color:var(--text)}
 .tab.active{background:var(--surface2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--line)}
-.pane{display:none;flex:1;min-height:0;flex-direction:column;gap:8px;padding-top:10px;overflow:hidden}
+.pane{display:none;flex:1;min-height:0;flex-direction:column;gap:8px;padding:10px 6px 0 0;overflow-y:auto;overflow-x:hidden}
 .pane.active{display:flex}
 
-.history{display:flex;flex-direction:column;gap:7px;min-height:0;overflow-y:auto}
+.history{display:flex;flex-direction:column;gap:7px;flex:none}
 .history li{
   display:flex;align-items:center;gap:10px;padding:6px 10px 6px 6px;border-radius:12px;
   background:rgba(0,0,0,.2);border:1px solid transparent;animation:slidein .35s ease both;flex:none;
@@ -261,7 +261,7 @@ ul,ol{list-style:none;padding:0}
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12.5px}
 .empty svg{font-size:26px;opacity:.6}
 .empty.hidden{display:none}
-.link-btn{align-self:flex-end;font-size:11.5px;color:var(--muted);padding:2px 4px;margin-top:auto}
+.link-btn{align-self:flex-end;font-size:11.5px;color:var(--muted);padding:6px 4px;margin-top:auto;position:sticky;bottom:0;background:linear-gradient(0deg,#09222b 60%,transparent);flex:none}
 .link-btn:hover{color:var(--non)}
 
 .serial-state{display:flex;gap:10px;align-items:center;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.22)}
@@ -269,23 +269,58 @@ ul,ol{list-style:none;padding:0}
 .serial-state.on svg{color:var(--bio)}
 .serial-state b{display:block;font-size:13px}
 .serial-state small{color:var(--muted);font-size:11px}
-.log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
-  font:500 11.5px ui-monospace,Consolas,monospace;padding:2px 4px}
+.log{flex:1 0 96px;min-height:96px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;
+  font:500 11.5px ui-monospace,Consolas,monospace;padding:6px 8px;border-radius:10px;background:rgba(0,0,0,.18)}
+.log li{flex:none}
 .log li{color:#9cc3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .log li.tx{color:var(--aqua)} .log li.ev{color:var(--amber)}
 .test-row{display:flex;gap:8px;flex:0 0 auto}
+.serial-state{flex:none}
+
+/* Arduino code download */
+.dl-btn{flex:none;display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:12px;text-decoration:none;color:#04201f;
+  background:var(--aqua);transition:transform .12s,box-shadow .2s,filter .2s}
+.dl-btn:hover{box-shadow:0 8px 22px -8px var(--aqua);filter:brightness(1.06)}
+.dl-btn:active{transform:scale(.98)}
+.dl-btn svg{font-size:22px}
+.dl-btn span{display:flex;flex-direction:column;line-height:1.25}
+.dl-btn b{font:700 13px var(--font-d)}
+.dl-btn small{font-size:11px;opacity:.75}
+.dl-note{flex:none;font-size:11px;line-height:1.45;color:var(--muted);padding-bottom:4px}
+.dl-note i{color:var(--text);font-style:normal}
 .chip{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:11px;font-size:12.5px;font-weight:700;border:1px solid var(--line);transition:all .2s}
 .chip.bio{color:var(--bio)} .chip.non{color:var(--non)}
 .chip.bio:hover:not(:disabled){background:rgba(182,240,74,.12);border-color:var(--bio)}
 .chip.non:hover:not(:disabled){background:rgba(255,123,92,.12);border-color:var(--non)}
 
-.guide{display:flex;flex-direction:column;gap:8px}
+.guide{display:flex;flex-direction:column;gap:8px;flex:none}
 .guide li{display:flex;flex-direction:column;padding:9px 12px;border-radius:12px;background:rgba(0,0,0,.2);border-left:3px solid var(--accent)}
 .guide b{font-size:13px}.guide span{font-size:12px;color:var(--muted)}
-.legend{display:flex;flex-direction:column;gap:6px;margin-top:auto;font-size:12px;color:var(--muted)}
+.legend{display:flex;flex-direction:column;gap:6px;margin-top:4px;flex:none;padding-bottom:4px;font-size:12px;color:var(--muted)}
 .lg{display:flex;align-items:center;gap:8px}
 .lg i{width:10px;height:10px;border-radius:50%}
 .lg.bio i{background:var(--bio)} .lg.non i{background:var(--non)}
+
+/* ---------------- SCROLLBARS (teal on deep lagoon) ---------------- */
+.pane,.log{
+  scrollbar-width:thin;
+  scrollbar-color:#2bbfa4 rgba(5,23,29,.7);        /* Firefox */
+}
+.pane::-webkit-scrollbar,.log::-webkit-scrollbar{width:8px}
+.pane::-webkit-scrollbar-track,.log::-webkit-scrollbar-track{
+  background:rgba(5,23,29,.7);border-radius:99px;box-shadow:inset 0 0 0 1px var(--line);
+}
+.pane::-webkit-scrollbar-thumb,.log::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#35e3c2,#1f9c8a);border-radius:99px;
+  border:2px solid rgba(5,23,29,.7);
+}
+.pane::-webkit-scrollbar-thumb:hover,.log::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#5df0d3,#2bbfa4)}
+
+.pane::-webkit-scrollbar-button,.log::-webkit-scrollbar-button{display:none}
+
+/* mobile-only controls */
+.mob{display:none}
+.sheet-close{display:none}
 
 /* footer */
 .foot{flex:0 0 28px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);background:rgba(5,23,29,.6)}
@@ -313,6 +348,13 @@ ul,ol{list-style:none;padding:0}
   .reticle{height:auto;width:74%;max-height:80%}
   .side{flex:0 0 auto;gap:8px}
   .panel{display:none}
+  .mob{display:inline-flex}
+  .app.sheet-open .panel{
+    display:flex;position:fixed;z-index:30;left:10px;right:10px;top:calc(var(--safe-t) + 60px);
+    bottom:calc(var(--safe-b) + 34px);background:var(--surface);box-shadow:0 30px 80px -10px #000,0 0 0 100vmax rgba(2,11,14,.6);
+  }
+  .app.sheet-open .sheet-close{display:block;align-self:flex-end;padding:2px 8px 8px;font-size:12px;font-weight:700;color:var(--muted)}
+  .app.sheet-open .tab.desk{display:none}
   .result{padding:11px 12px}
   .res-ico{width:46px;height:46px;font-size:24px;border-radius:14px}
   .res-main h2{font-size:17px}

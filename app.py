@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 
 import numpy as np
@@ -15,12 +15,13 @@ except ImportError:
         )
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024   # reject huge uploads
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model_unquant.tflite")
 LABELS_PATH = os.path.join(os.path.dirname(__file__), "labels.txt")
 MODEL_WIDTH = 224
 MODEL_HEIGHT = 224
-SCAN_DELAY_SECONDS = 2.5
+ARDUINO_DIR = os.path.join(os.path.dirname(__file__), "EcoVision_Final")
 
 interpreter = None
 input_details = None
@@ -90,6 +91,15 @@ def predict_image(image):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/download/arduino")
+def download_arduino():
+    # The Arduino sketch, offered as a download from the Arduino panel.
+    return send_from_directory(
+        ARDUINO_DIR, "EcoVision_Final.ino", as_attachment=True,
+        download_name="EcoVision_Final.ino", mimetype="text/plain",
+    )
 
 
 @app.route("/api/status", methods=["GET"])

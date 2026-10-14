@@ -69,17 +69,48 @@ function load() {
 function save() {
   try {
     localStorage.setItem("ev_stats", JSON.stringify(stats));
-    localStorage.setItem("ev_history", JSON.stringify(history.slice(0, 12)));
+    localStorage.setItem("ev_history", JSON.stringify(history.slice(0, 30)));
     localStorage.setItem("ev_mode", scanMode);
   } catch (e) { /* ignore */ }
 }
 
 /* ---------- sound ---------- */
 let audioCtx = null;
+function getAudio() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+/* Phones keep audio locked until the first touch. Unlock on the first tap anywhere,
+   so the beeps and voice of an automatic scan can play later without another tap. */
+function unlockAudio() {
+  try {
+    const c = getAudio();
+    const o = c.createOscillator(), g = c.createGain();
+    g.gain.value = 0.0001; o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.02);
+    window.speechSynthesis?.cancel();
+  } catch (e) { /* ignore */ }
+  ["pointerdown", "touchend", "click", "keydown"].forEach((ev) => document.removeEventListener(ev, unlockAudio, true));
+}
+["pointerdown", "touchend", "click", "keydown"].forEach((ev) => document.addEventListener(ev, unlockAudio, true));
+
+function buzz(pattern) {                         // vibration (Android; iPhone ignores it)
+  if (soundOn && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} }
+}
+function speak(text) {                           // spoken result, short and clear
+  if (!soundOn || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1; u.pitch = 1; u.volume = 1;
+    speechSynthesis.speak(u);
+  } catch (e) { /* ignore */ }
+}
+
 function beep(freqs, dur = 0.12) {
   if (!soundOn) return;
   try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = getAudio();
     let t = audioCtx.currentTime;
     freqs.forEach((f) => {
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
@@ -94,10 +125,10 @@ function beep(freqs, dur = 0.12) {
   } catch (e) { /* ignore */ }
 }
 const SND = {
-  detect: () => beep([660]),
-  bio: () => beep([523, 659, 784]),
-  non: () => beep([392, 294]),
-  error: () => beep([220, 196], 0.18),
+  detect: () => { beep([660]); buzz(40); },
+  bio: () => { beep([523, 659, 784]); buzz([60, 40, 60]); },
+  non: () => { beep([392, 294]); buzz([180]); },
+  error: () => { beep([220, 196], 0.18); buzz([90, 60, 90, 60, 90]); },
 };
 
 /* ---------- eco tips ---------- */
@@ -113,6 +144,7 @@ const TIPS = {
     "Never burn plastic. Send it to a proper recycling point.",
   ],
 };
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
 /* ---------- camera ---------- */
@@ -173,7 +205,8 @@ function logLine(text, cls = "") {
   li.textContent = `${now()}  ${text}`;
   if (cls) li.className = cls;
   serialLog.appendChild(li);
-  while (serialLog.children.length > 8) serialLog.firstChild.remove();
+  while (serialLog.children.length > 80) serialLog.firstChild.remove();
+  serialLog.scrollTop = serialLog.scrollHeight;
 }
 
 function arduinoUI(connected, message = "") {
@@ -573,6 +606,7 @@ function showResult(d, thumb) {
   const bio = d.result === "BIODEGRADABLE";
   setState(bio ? "bio" : "non");
   (bio ? SND.bio : SND.non)();
+  setTimeout(() => speak(bio ? "Biodegradable" : "Non biodegradable"), 450);
 
   const label = bio ? "Biodegradable" : "Non-biodegradable";
   const icon = ICON(bio ? "i-leaf" : "i-bin");
@@ -588,7 +622,7 @@ function showResult(d, thumb) {
 
   stats.total++; bio ? stats.bio++ : stats.non++;
   history.unshift({ bio, label, c, t: now(), img: thumb });
-  history = history.slice(0, 12);
+  history = history.slice(0, 30);
   save(); renderStats(); renderHistory();
 }
 
@@ -602,10 +636,10 @@ function renderStats() {
 function renderHistory() {
   historyList.innerHTML = "";
   historyEmpty.classList.toggle("hidden", history.length > 0);
-  history.slice(0, 6).forEach((h) => {
+  history.forEach((h) => {
     const li = document.createElement("li");
     li.innerHTML = `<img alt="" src="${h.img || ""}">
-      <div class="h-main"><b>${h.label}</b><small>${h.t} · ${Number(h.c).toFixed(0)}% sure</small></div>
+      <div class="h-main"><b>${esc(h.label)}</b><small>${h.t} · ${Number(h.c).toFixed(0)}% sure</small></div>
       <span class="h-tag ${h.bio ? "bio" : "non"}">${h.bio ? "BIO" : "NON-BIO"}</span>`;
     historyList.appendChild(li);
   });
@@ -652,6 +686,27 @@ document.querySelectorAll(".tab").forEach((tab) =>
   })
 );
 
+/* phone: History / Guide open as a sheet over the camera */
+const btnInfo = $("btnInfo"), btnSheetClose = $("btnSheetClose");
+function toggleSheet(open) {
+  const o = open ?? !app.classList.contains("sheet-open");
+  app.classList.toggle("sheet-open", o);
+  btnInfo?.setAttribute("aria-expanded", o);
+}
+btnInfo?.addEventListener("click", () => toggleSheet());
+btnSheetClose?.addEventListener("click", () => toggleSheet(false));
+
+/* keep the phone screen awake so camera auto-scan keeps running */
+let wakeLock = null;
+async function keepAwake() {
+  try { if ("wakeLock" in navigator && !wakeLock) {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } } catch (e) { /* ignore */ }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) keepAwake(); });
+document.addEventListener("pointerdown", keepAwake, { once: true });
+
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space" && !e.repeat && !["BUTTON", "INPUT"].includes(document.activeElement.tagName)) {
     e.preventDefault(); performScan(false);
@@ -671,6 +726,7 @@ if (webSerialSupported()) {
 (async function init() {
   load(); renderStats(); renderHistory();
   startCamera();
+  keepAwake();
   refreshTrigger();
   if (isMobile) { say(scanMode === "auto" ? "Auto mode. Place an item in front of the camera." : "Manual mode. Point at an item and press Scan now."); }
   else { arduinoUI(false, webSerialSupported() ? "Connect an Arduino for sensor scanning, or just place an item in front of the camera." : "Use Chrome or Edge to connect an Arduino."); }

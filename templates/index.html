@@ -28,6 +28,8 @@
     <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 12h3l2-6 4 12 3-9 2 3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-tap" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6L5 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4a3 3 0 0 0-3 0zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4V4zM5 16a4 4 0 0 1 4-4h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -53,6 +55,9 @@
     <div class="tools">
       <button id="btnArduino" class="btn connect desk" title="Connect your Arduino over USB">
         <svg><use href="#i-plug"/></svg><span id="btnArduinoText">Connect Arduino</span>
+      </button>
+      <button id="btnInfo" class="icon-btn mob" title="History and guide" aria-expanded="false">
+        <svg><use href="#i-book"/></svg>
       </button>
       <button id="btnSound" class="icon-btn on" title="Sound effects" aria-pressed="true">
         <svg><use href="#i-sound"/></svg><span class="hide-sm">Sound</span>
@@ -169,6 +174,7 @@
 
       <!-- TABBED PANEL -->
       <section class="card panel">
+        <button class="sheet-close mob" id="btnSheetClose" type="button">Close ✕</button>
         <nav class="tabs" role="tablist">
           <button class="tab active" data-tab="history" role="tab">History</button>
           <button class="tab desk" data-tab="serial" role="tab">Arduino</button>
@@ -191,6 +197,11 @@
             <button class="chip bio" id="testBio"  disabled><svg><use href="#i-leaf"/></svg>Test Bio</button>
             <button class="chip non" id="testNon"  disabled><svg><use href="#i-bin"/></svg>Test Non-bio</button>
           </div>
+          <a class="dl-btn" id="dlArduino" href="/download/arduino" download="EcoVision_Final.ino" title="Download the Arduino UNO sketch">
+            <svg><use href="#i-down"/></svg>
+            <span><b>Download Arduino code</b><small>EcoVision_Final.ino · UNO · 16x2 I2C LCD</small></span>
+          </a>
+          <p class="dl-note">Open it in the Arduino IDE (it asks to put it in a folder named EcoVision_Final), install <i>LiquidCrystal_I2C</i>, then Upload.</p>
         </div>
 
         <div class="pane" id="pane-guide">

@@ -33,6 +33,14 @@ const int NON_BIO_ANGLE = 145;
 
 bool objectPresent = false;
 
+// Result display timing (non-blocking, so the sensor keeps reporting distance)
+bool resultActive = false;
+unsigned long resultStart = 0;
+const unsigned long RESULT_TIME = 2500;
+
+// Serial command buffer (non-blocking line reader)
+String rxLine = "";
+
 // Scan mode, set by the EcoVision website (MODE_AUTO / MODE_MANUAL).
 // Auto   : the ultrasonic sensor starts the scan.
 // Manual : the sensor still reports OBJECT_DETECTED and distance, but the LCD
@@ -40,6 +48,27 @@ bool objectPresent = false;
 bool autoMode = true;
 unsigned long lastDetectionTime = 0;
 const unsigned long detectionDelay = 2000;
+
+
+// =====================================================
+// LCD HELPERS
+// The LCD is 16 columns x 2 rows. "NON-BIODEGRADABLE" is 17 characters,
+// so it cannot fit on one row. It is split over both rows instead:
+//     RESULT: NON-
+//     BIODEGRADABLE
+// =====================================================
+
+void showLcd(const char* line1, const char* line2) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(line1);
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
+}
+
+void showReady() {
+  showLcd("EcoVision Ready", "Place Object");
+}
 
 
 // =====================================================
@@ -113,6 +142,16 @@ void loop() {
   // Check commands coming from the EcoVision browser via Web Serial
   readEcoVisionCommand();
 
+  // End of the result display: centre the servo, LEDs off
+  if (resultActive && millis() - resultStart >= RESULT_TIME) {
+    resultActive = false;
+    sortingServo.write(CENTER_ANGLE);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    if (objectPresent) showLcd("Remove Object", "to scan again");
+    else showReady();
+  }
+
   float distance = getDistance();
 
   if (distance > 0) {
@@ -152,11 +191,8 @@ void loop() {
 
       sortingServo.write(CENTER_ANGLE);
 
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("EcoVision Ready");
-      lcd.setCursor(0, 1);
-      lcd.print("Place Object");
+      resultActive = false;
+      showReady();
 
       Serial.println("OBJECT_REMOVED");
 
@@ -175,9 +211,18 @@ void loop() {
 void readEcoVisionCommand() {
 
   while (Serial.available() > 0) {
+    char c = (char)Serial.read();
 
-    String command = Serial.readStringUntil('\n');
+    if (c == '\r') continue;
+    if (c != '\n') {
+      if (rxLine.length() < 24) rxLine += c;   // ignore runaway input
+      continue;
+    }
+
+    String command = rxLine;
+    rxLine = "";
     command.trim();
+    if (command.length() == 0) continue;
 
     // -------------------------------------------------
     // SCAN MODE (sent by the website)
@@ -186,11 +231,8 @@ void readEcoVisionCommand() {
 
       autoMode = (command == "MODE_AUTO");
 
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print(autoMode ? "Auto Scan" : "Manual Scan");
-      lcd.setCursor(0, 1);
-      lcd.print(autoMode ? "Place Object" : "Use Scan now");
+      showLcd(autoMode ? "Auto Scan" : "Manual Scan",
+              autoMode ? "Place Object" : "Use Scan now");
 
       Serial.println(autoMode ? "MODE_AUTO_ACCEPTED" : "MODE_MANUAL_ACCEPTED");
     }
@@ -203,58 +245,32 @@ void readEcoVisionCommand() {
       digitalWrite(GREEN_LED, HIGH);
       digitalWrite(RED_LED, LOW);
 
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("RESULT:");
-
-      lcd.setCursor(0, 1);
-      lcd.print("BIODEGRADABLE");
+      showLcd("RESULT:", "BIODEGRADABLE");          // 13 characters
 
       sortingServo.write(BIO_ANGLE);
+      resultActive = true;
+      resultStart = millis();
 
       Serial.println("BIO_ACCEPTED");
-
-      delay(2500);
-
-      sortingServo.write(CENTER_ANGLE);
-      digitalWrite(GREEN_LED, LOW);
-
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("EcoVision Ready");
-      lcd.setCursor(0, 1);
-      lcd.print("Place Object");
     }
 
     // -------------------------------------------------
     // NON-BIODEGRADABLE
+    // "NON-BIODEGRADABLE" is 17 characters, one more than the
+    // 16-column LCD, so it is split across the two rows.
     // -------------------------------------------------
     else if (command == "NON_BIO") {
 
       digitalWrite(GREEN_LED, LOW);
       digitalWrite(RED_LED, HIGH);
 
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("RESULT:");
-
-      lcd.setCursor(0, 1);
-      lcd.print("NON-BIODEGRADABLE");
+      showLcd("RESULT: NON-", "BIODEGRADABLE");     // 12 + 13 characters
 
       sortingServo.write(NON_BIO_ANGLE);
+      resultActive = true;
+      resultStart = millis();
 
       Serial.println("NON_BIO_ACCEPTED");
-
-      delay(2500);
-
-      sortingServo.write(CENTER_ANGLE);
-      digitalWrite(RED_LED, LOW);
-
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("EcoVision Ready");
-      lcd.setCursor(0, 1);
-      lcd.print("Place Object");
     }
   }
 }
