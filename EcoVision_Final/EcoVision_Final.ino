@@ -10,10 +10,6 @@
 const int TRIG_PIN = 2;
 const int ECHO_PIN = 3;
 
-// LEDs
-const int GREEN_LED = 8;
-const int RED_LED = 7;
-
 // Servo
 const int SERVO_PIN = 9;
 
@@ -81,12 +77,6 @@ void setup() {
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
 
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
-
-  digitalWrite(GREEN_LED, LOW);
-  digitalWrite(RED_LED, LOW);
-
   sortingServo.attach(SERVO_PIN);
   sortingServo.write(CENTER_ANGLE);
 
@@ -142,12 +132,10 @@ void loop() {
   // Check commands coming from the EcoVision browser via Web Serial
   readEcoVisionCommand();
 
-  // End of the result display: centre the servo, LEDs off
+  // End of the result display: centre the servo
   if (resultActive && millis() - resultStart >= RESULT_TIME) {
     resultActive = false;
     sortingServo.write(CENTER_ANGLE);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, LOW);
     if (objectPresent) showLcd("Remove Object", "to scan again");
     else showReady();
   }
@@ -186,8 +174,6 @@ void loop() {
 
       objectPresent = false;
 
-      digitalWrite(GREEN_LED, LOW);
-      digitalWrite(RED_LED, LOW);
 
       sortingServo.write(CENTER_ANGLE);
 
@@ -242,8 +228,6 @@ void readEcoVisionCommand() {
     // -------------------------------------------------
     else if (command == "BIO") {
 
-      digitalWrite(GREEN_LED, HIGH);
-      digitalWrite(RED_LED, LOW);
 
       showLcd("RESULT:", "BIODEGRADABLE");          // 13 characters
 
@@ -261,8 +245,6 @@ void readEcoVisionCommand() {
     // -------------------------------------------------
     else if (command == "NON_BIO") {
 
-      digitalWrite(GREEN_LED, LOW);
-      digitalWrite(RED_LED, HIGH);
 
       showLcd("RESULT: NON-", "BIODEGRADABLE");     // 12 + 13 characters
 

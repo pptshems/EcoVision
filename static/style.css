@@ -296,10 +296,6 @@ ul,ol{list-style:none;padding:0}
 .guide{display:flex;flex-direction:column;gap:8px;flex:none}
 .guide li{display:flex;flex-direction:column;padding:9px 12px;border-radius:12px;background:rgba(0,0,0,.2);border-left:3px solid var(--accent)}
 .guide b{font-size:13px}.guide span{font-size:12px;color:var(--muted)}
-.legend{display:flex;flex-direction:column;gap:6px;margin-top:4px;flex:none;padding-bottom:4px;font-size:12px;color:var(--muted)}
-.lg{display:flex;align-items:center;gap:8px}
-.lg i{width:10px;height:10px;border-radius:50%}
-.lg.bio i{background:var(--bio)} .lg.non i{background:var(--non)}
 
 /* ---------------- SCROLLBARS (teal on deep lagoon) ---------------- */
 .pane,.log{

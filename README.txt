@@ -28,8 +28,6 @@ to an Arduino UNO.
 Connections used by the sketch:
   HC-SR04 TRIG  -> D2
   HC-SR04 ECHO  -> D3
-  Green LED      -> D8
-  Red LED        -> D7
   Servo          -> D9
   LCD SDA        -> A4
   LCD SCL        -> A5
@@ -152,7 +150,7 @@ NEW IN THIS VERSION: "DEEP LAGOON" INTERFACE
 - Statistics (scanned / bio / non-bio) with a split bar, saved in the browser.
 - History tab with photo thumbnails of recent scans.
 - Arduino tab: live serial log plus "Test Bio" / "Test Non-bio" buttons
-  to check the servo, LEDs and LCD without scanning anything.
+  to check the servo and LCD without scanning anything.
 - Header toggles: Auto-scan on/off, Sound on/off, Fullscreen. Space bar = scan.
 - Flip button cycles through available cameras.
 No change was needed in app.py or the Arduino sketch.
