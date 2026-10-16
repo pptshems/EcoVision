@@ -24,8 +24,8 @@ const float DETECT_DISTANCE = 20.0;
 
 // Servo positions - adjust these to match your sorter
 const int CENTER_ANGLE = 90;
-const int BIO_ANGLE = 145;
-const int NON_BIO_ANGLE = 35;
+const int BIO_ANGLE = 35;
+const int NON_BIO_ANGLE = 145;
 
 bool objectPresent = false;
 
